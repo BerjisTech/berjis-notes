@@ -1,10 +1,28 @@
-<div class="min-h-screen max-w-5xl mx-auto p-4">
-  <header class="py-6">
-    <h1 class="text-2xl font-semibold">Berjis Notes</h1>
-    <nav class="mt-2 text-sm text-gray-600 flex gap-4">
-      <a routerLink="/" routerLinkActive="font-semibold">Home</a>
-      <a routerLink="/note/demo" routerLinkActive="font-semibold">Note (demo)</a>
-    </nav>
-  </header>
-  <router-outlet></router-outlet>
+<div class="fixed top-0 left-0 bottom-0 right-0 w-full h-full flex items-start justify-start m-0 p-0 bg-slate-50">
+  <!-- Sidebar -->
+  <aside *ngIf="authed === true" class="w-[300px] h-screen flex flex-col items-start justify-start bg-slate-500 p-2">
+
+    <header class="py-6">
+      <h1 class="text-2xl font-semibold">Berjis Notes</h1>
+      <nav class="mt-2 text-sm text-gray-600 flex gap-4">
+        <a routerLink="/" routerLinkActive="font-semibold">Home</a>
+        <a routerLink="/note/demo" routerLinkActive="font-semibold">Note (demo)</a>
+      </nav>
+    </header>
+    <div class="flex-grow overflow-x-hidden overflow-y-auto space-y-1">
+      <div *ngFor="let n of recents">
+        <button (click)="select(n)" class="cursor-pointer" [class.border-blue-500]="activeNote?.id === n.id">
+          <div class="text-sm font-medium truncate">{{ n.title }}</div>
+          <div class="text-xs text-gray-500">Updated {{ n.updatedAt | date:'mediumDate' }}</div>
+        </button>
+      </div>
+    </div>
+    <div class="flex items-center justify-between mb-3 rounded bg-slate-600 p-3 gap-2 w-full">
+      <div class="font-semibold">Recent Notes</div>
+      <button (click)="createNote()" class="text-sm px-2 py-1 rounded bg-blue-600 text-white">New Note</button>
+    </div>
+  </aside>
+  <main class="h-screen flex-grow overflow-x-hidden overflow-y-auto p-2 w-full">
+    <router-outlet></router-outlet>
+  </main>
 </div>

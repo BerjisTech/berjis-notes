@@ -39,9 +39,5 @@ export class HomePageComponent {
   }
 
   select(n: { id: string; title: string; updatedAt: string }) { this.activeNote = n; }
-  createNote() {
-    // Navigate to editor; in a real flow we'd create on the API first and use returned id
-    this.router.navigate(['/note', 'new']);
-  }
 }
 

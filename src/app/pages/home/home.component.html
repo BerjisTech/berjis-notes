@@ -1,5 +1,5 @@
 <!-- Logged out landing / marketing -->
-<div *ngIf="authed === false" class="w-[250px] h-full">
+<div *ngIf="authed === false" class="w-full min-h-full">
   <h2 class="text-3xl font-semibold mb-3">Organize ideas with Berjis Notes</h2>
   <p class="text-gray-600 mb-6">Fast, simple, and collaborative note-taking across your devices. Create notebooks,
     capture thoughts, and turn them into action.</p>
@@ -24,64 +24,52 @@
 </div>
 
 <!-- Logged in main UI -->
-<div *ngIf="authed === true"
-  class="fixed top-0 left-0 bottom-0 right-0 w-full h-full flex items-start justify-start m-0 p-0">
-  <!-- Sidebar -->
-  <aside class="w-[250px] h-full">
-    <div class="flex items-center justify-between mb-3">
-      <div class="font-semibold">Recent Noters</div>
-      <button (click)="createNote()" class="text-sm px-2 py-1 rounded bg-blue-600 text-white">New Note</button>
-    </div>
-    <ul class="space-y-1">
-      <li *ngFor="let n of recents">
-        <button (click)="select(n)" class="w-full text-left px-2 py-2 rounded hover:bg-gray-50 border"
-          [class.border-blue-500]="activeNote?.id === n.id">
-          <div class="text-sm font-medium truncate">{{ n.title }}</div>
-          <div class="text-xs text-gray-500">Updated {{ n.updatedAt | date:'mediumDate' }}</div>
-        </button>
-      </li>
-    </ul>
-  </aside>
+<div *ngIf="authed === true">
 
   <!-- Main content area -->
-  <main class="flex-grow overflow-x-hidden overflow-y-auto">
-    <ng-container *ngIf="activeNote; else emptyState">
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="text-xl font-semibold">{{ activeNote.title }}</h3>
-        <a [routerLink]="['/note', activeNote.id]" class="px-3 py-1.5 rounded bg-green-600 text-white text-sm">Open in
-          Editor</a>
-      </div>
-      <div class="text-sm text-gray-600">
-        Preview is not implemented here. Use the editor to start writing and collaborating.
-      </div>
-    </ng-container>
-    <ng-template #emptyState>
-      <div class="text-center text-gray-700">
-        <h3 class="text-xl font-semibold mb-2">Welcome back to Notes</h3>
-        <p class="text-gray-600 mb-6">Pick a note on the left or create a new one to get started.</p>
-        <div class="grid sm:grid-cols-3 gap-4 text-left">
-          <div class="border rounded p-3">
-            <div class="font-medium mb-1">Quick links</div>
-            <ul class="text-sm list-disc pl-5 text-gray-600">
-              <li><button (click)="createNote()" class="underline">Create a new note</button></li>
-              <li><a routerLink="/note/demo" class="underline">Open demo note</a></li>
-            </ul>
-          </div>
-          <div class="border rounded p-3">
-            <div class="font-medium mb-1">Tips</div>
-            <ul class="text-sm list-disc pl-5 text-gray-600">
-              <li>Use #tags to organize topics</li>
-              <li>&#64;mention teammates to collaborate</li>
-            </ul>
-          </div>
-          <div class="border rounded p-3">
-            <div class="font-medium mb-1">Tutorial</div>
-            <div class="text-sm text-gray-600">Learn basics of Berjis Notes in 2 minutes.</div>
-          </div>
+
+  <ng-container *ngIf="activeNote; else emptyState">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-xl font-semibold">{{ activeNote.title }}</h3>
+      <a [routerLink]="['/note', activeNote.id]" class="px-3 py-1.5 rounded bg-green-600 text-white text-sm">Open in
+        Editor</a>
+    </div>
+    <div class="text-sm text-gray-600">
+      Preview is not implemented here. Use the editor to start writing and collaborating.
+    </div>
+  </ng-container>
+  <ng-template #emptyState>
+    <div class="container max-w-4xl mx-auto">
+      <div class="text-3xl my-5">Hello username</div>
+      <div class="grid grid-cols-2 auto-rows-[150px] shadow rounded">
+        <div class="p-2 bg-slate-300 rounded">
+          <div>Notes AI</div>
+          <div>Try notes ai</div>
+          <a routerLink="/" class="btn bg-blue-500 text-white rounded shadow hover:shadow-lg px-3 py-1">Try for
+            free</a>
+        </div>
+        <div class="p-2">
+          Placeholder vector for NotesAI
         </div>
       </div>
-    </ng-template>
-  </main>
+      <div class="text-2xl mt-4 mb-2">Recent notes</div>
+      <div class="w-full flex items-start justify-start overflow-y-hidden overflow-x-auto gap-2">
+        <div *ngFor="let n of recents"  (click)="select(n)"
+          class="h-[100px] w-[200px] shadow hover:shadow-lg transform hover:-translate-1 rounded cursor-pointer px-3 py-2 my-2">
+          <div class="text-sm font-medium truncate">{{ n.title }}</div>
+          <div class="text-xs text-gray-500">Updated {{ n.updatedAt | date:'mediumDate' }}</div>
+        </div>
+      </div>
+      <div class="text-2xl mt-4 mb-2">Notes Tutorials</div>
+      <div class="w-full grid grid-cols-3 auto-cols-[150px] auto-rows-[250px] overflow-y-hidden overflow-x-auto gap-3">
+        <div *ngFor="let card of [0,1,2,3,4,5]"
+          class="col-span-1 row-span-1 m-2 shadow hover:shadow-lg transform hover:-translate-0.5 rounded cursor-pointer p-2">
+          Tutorial
+        </div>
+      </div>
+    </div>
+  </ng-template>
+
 </div>
 
 <!-- Loading state -->
