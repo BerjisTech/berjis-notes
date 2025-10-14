@@ -1,0 +1,87 @@
+<div class="min-h-[60vh]">
+  <!-- Logged out landing / marketing -->
+  <div *ngIf="authed === false" class="mx-auto max-w-3xl text-center py-16">
+    <h2 class="text-3xl font-semibold mb-3">Organize ideas with Berjis Notes</h2>
+    <p class="text-gray-600 mb-6">Fast, simple, and collaborative note-taking across your devices. Create notebooks, capture thoughts, and turn them into action.</p>
+    <div class="flex items-center justify-center gap-3">
+      <a class="px-4 py-2 rounded bg-blue-600 text-white" href="http://berjis.test">Get Started</a>
+      <a class="px-4 py-2 rounded border" href="/note/demo">Try Demo</a>
+    </div>
+    <div class="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-6 text-left">
+      <div>
+        <div class="font-medium">Instant search</div>
+        <div class="text-sm text-gray-600">Find any note by title, tag, or content.</div>
+      </div>
+      <div>
+        <div class="font-medium">Share & collaborate</div>
+        <div class="text-sm text-gray-600">Work together with mentions and comments.</div>
+      </div>
+      <div>
+        <div class="font-medium">Version history</div>
+        <div class="text-sm text-gray-600">Never lose context with automatic history.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Logged in main UI -->
+  <div *ngIf="authed === true" class="grid grid-cols-12 gap-4">
+    <!-- Sidebar -->
+    <aside class="col-span-12 md:col-span-4 lg:col-span-3 border rounded p-3 h-[70vh] overflow-auto">
+      <div class="flex items-center justify-between mb-3">
+        <div class="font-semibold">Recent Notes</div>
+        <button (click)="createNote()" class="text-sm px-2 py-1 rounded bg-blue-600 text-white">New Note</button>
+      </div>
+      <ul class="space-y-1">
+        <li *ngFor="let n of recents">
+          <button (click)="select(n)" class="w-full text-left px-2 py-2 rounded hover:bg-gray-50 border" [class.border-blue-500]="activeNote?.id === n.id">
+            <div class="text-sm font-medium truncate">{{ n.title }}</div>
+            <div class="text-xs text-gray-500">Updated {{ n.updatedAt | date:'mediumDate' }}</div>
+          </button>
+        </li>
+      </ul>
+    </aside>
+
+    <!-- Main content area -->
+    <main class="col-span-12 md:col-span-8 lg:col-span-9 border rounded p-6 h-[70vh] overflow-auto">
+      <ng-container *ngIf="activeNote; else emptyState">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-xl font-semibold">{{ activeNote.title }}</h3>
+          <a [routerLink]="['/note', activeNote.id]" class="px-3 py-1.5 rounded bg-green-600 text-white text-sm">Open in Editor</a>
+        </div>
+        <div class="text-sm text-gray-600">
+          Preview is not implemented here. Use the editor to start writing and collaborating.
+        </div>
+      </ng-container>
+      <ng-template #emptyState>
+        <div class="text-center text-gray-700">
+          <h3 class="text-xl font-semibold mb-2">Welcome back to Notes</h3>
+          <p class="text-gray-600 mb-6">Pick a note on the left or create a new one to get started.</p>
+          <div class="grid sm:grid-cols-3 gap-4 text-left">
+            <div class="border rounded p-3">
+              <div class="font-medium mb-1">Quick links</div>
+              <ul class="text-sm list-disc pl-5 text-gray-600">
+                <li><button (click)="createNote()" class="underline">Create a new note</button></li>
+                <li><a routerLink="/note/demo" class="underline">Open demo note</a></li>
+              </ul>
+            </div>
+            <div class="border rounded p-3">
+              <div class="font-medium mb-1">Tips</div>
+              <ul class="text-sm list-disc pl-5 text-gray-600">
+                <li>Use #tags to organize topics</li>
+                <li>&#64;mention teammates to collaborate</li>
+              </ul>
+            </div>
+            <div class="border rounded p-3">
+              <div class="font-medium mb-1">Tutorial</div>
+              <div class="text-sm text-gray-600">Learn basics of Berjis Notes in 2 minutes.</div>
+            </div>
+          </div>
+        </div>
+      </ng-template>
+    </main>
+  </div>
+
+  <!-- Loading state -->
+  <div *ngIf="authed === null" class="py-16 text-center text-gray-500">Checking your session.</div>
+</div>
+

@@ -5,7 +5,7 @@ import { CommonModule } from '@angular/common';
   standalone: true,
   selector: 'app-note',
   imports: [CommonModule],
-  template: `<div class="border rounded p-4">Notes editor placeholder (DIY collab slot)</div>`
+  templateUrl: './note.component.html'
 })
 export class NotePageComponent {}
 
