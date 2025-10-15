@@ -1,6 +1,6 @@
 <div class="fixed top-0 left-0 bottom-0 right-0 w-full h-full flex items-start justify-start m-0 p-0 bg-slate-50">
   <!-- Sidebar -->
-  <aside *ngIf="authed === true" class="w-[300px] h-screen flex flex-col items-start justify-start bg-slate-500 p-2">
+  <aside *ngIf="authed === true" class="w-[300px] h-screen flex flex-col items-start justify-start bg-slate-200 p-2">
 
     <header class="py-6">
       <h1 class="text-2xl font-semibold">Berjis Notes</h1>
@@ -8,7 +8,19 @@
         <a routerLink="/" routerLinkActive="font-semibold">Home</a>
         <a routerLink="/note/demo" routerLinkActive="font-semibold">Note (demo)</a>
       </nav>
+      <div class="mt-2 text-xs flex items-center gap-2">
+        <span class="inline-block h-2 w-2 rounded-full" [class.bg-green-500]="syncMode==='remote'" [class.bg-yellow-500]="syncMode==='local'"></span>
+        <span>Sync: {{ syncMode === 'remote' ? 'Server' : 'Local' }}</span>
+        <span *ngIf="isSaving" class="text-gray-500">• Saving…</span>
+        <span *ngIf="!isSaving && lastSavedAt" class="text-gray-500">• Saved {{ lastSavedAt | date:'shortTime' }}</span>
+        <span *ngIf="lastError" class="text-red-600">• {{ lastError }}</span>
+      </div>
     </header>
+    <div class="flex items-center justify-between gap-1 mb-2 w-full">
+      <button class="px-2 py-1 rounded border text-xs" [class.bg-white]="filter==='active'" (click)="setFilter('active')">Active</button>
+      <button class="px-2 py-1 rounded border text-xs" [class.bg-white]="filter==='archived'" (click)="setFilter('archived')">Archived</button>
+      <button class="px-2 py-1 rounded border text-xs" [class.bg-white]="filter==='deleted'" (click)="setFilter('deleted')">Trash</button>
+    </div>
     <div class="flex-grow overflow-x-hidden overflow-y-auto space-y-1">
       <div *ngFor="let n of recents">
         <button (click)="select(n)" class="cursor-pointer" [class.border-blue-500]="activeNote?.id === n.id">
@@ -17,8 +29,8 @@
         </button>
       </div>
     </div>
-    <div class="flex items-center justify-between mb-3 rounded bg-slate-600 p-3 gap-2 w-full">
-      <div class="font-semibold">Recent Notes</div>
+    <div class="flex items-center justify-between mb-3 rounded bg-slate-300 p-3 gap-2 w-full">
+      <div class="font-semibold">{{ filter | titlecase }}</div>
       <button (click)="createNote()" class="text-sm px-2 py-1 rounded bg-blue-600 text-white">New Note</button>
     </div>
   </aside>

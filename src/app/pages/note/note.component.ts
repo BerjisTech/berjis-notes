@@ -24,25 +24,26 @@ export class NotePageComponent implements OnInit, OnDestroy {
   constructor(
     private route: ActivatedRoute,
     private router: Router,
-    private notes: NotesService,
+    public notes: NotesService,
   ) {}
 
-  ngOnInit(): void {
+  async ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id') || 'new';
+    // Start with a placeholder so template bindings are safe
+    this.note = {
+      id,
+      title: '', content: '', todos: [], status: 'active',
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+    };
+
     if (id !== 'new') {
-      const existing = this.notes.get(id);
-      this.note = existing || this.notes.create({ id });
-    } else {
-      // Lazy-create when user types a title/content/todo
-      this.note = {
-        id: 'new',
-        title: '',
-        content: '',
-        todos: [],
-        status: 'active',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
+      const existing = this.notes.get(id) || await this.notes.fetch(id);
+      if (existing) { this.note = existing; }
+      else {
+        // Not found remotely nor locally — navigate home
+        this.router.navigate(['/']);
+        return;
+      }
     }
     // Initialize editor HTML
     setTimeout(() => {
@@ -85,13 +86,13 @@ export class NotePageComponent implements OnInit, OnDestroy {
     this.pendingSave = setTimeout(() => this.save(), 400);
   }
 
-  private ensureCreatedId() {
+  private async ensureCreatedId() {
     if (this.note && this.note.id === 'new') {
       const hasTitle = !!this.note.title && this.note.title.trim().length > 0;
       const hasContent = !!this.note.content && this.note.content.replace(/<[^>]*>/g, '').trim().length > 0;
       const hasTodos = !!this.note.todos && this.note.todos.some(t => t.text.trim().length > 0);
       if (hasTitle || hasContent || hasTodos) {
-        const created = this.notes.create({
+        const created = await this.notes.create({
           title: this.note.title,
           content: this.note.content,
           todos: this.note.todos,
@@ -103,11 +104,11 @@ export class NotePageComponent implements OnInit, OnDestroy {
     }
   }
 
-  private save() {
+  private async save() {
     if (!this.note) return;
-    this.ensureCreatedId();
+    await this.ensureCreatedId();
     if (!this.note) return;
-    this.notes.save(this.note);
+    await this.notes.save(this.note);
   }
 
   exec(cmd: string, value?: string) {
@@ -153,17 +154,23 @@ export class NotePageComponent implements OnInit, OnDestroy {
 
   resetFormatting() { this.exec('removeFormat'); }
 
-  softDelete() {
+  async softDelete() {
     if (!this.note) return;
     if (confirm('Move note to Trash?')) {
-      this.notes.softDelete(this.note.id);
+      await this.notes.softDelete(this.note.id);
       this.router.navigate(['/']);
     }
   }
 
-  archive() {
+  async archive() {
     if (!this.note) return;
-    this.notes.archive(this.note.id);
+    await this.notes.archive(this.note.id);
+    this.router.navigate(['/']);
+  }
+
+  async restore() {
+    if (!this.note) return;
+    await this.notes.restore(this.note.id);
     this.router.navigate(['/']);
   }
 

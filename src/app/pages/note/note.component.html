@@ -8,7 +8,10 @@
       (ngModelChange)="onTitleChange()"
     />
     <div class="flex items-center gap-2">
-      <button class="px-2 py-1 rounded border" (click)="archive()">Archive</button>
+      <span class="text-xs text-gray-500" *ngIf="notes?.isSaving">Saving…</span>
+      <span class="text-xs text-gray-500" *ngIf="!notes?.isSaving && notes?.lastSavedAt">Saved {{ notes?.lastSavedAt | date:'shortTime' }}</span>
+      <button *ngIf="note?.status === 'active'" class="px-2 py-1 rounded border" (click)="archive()">Archive</button>
+      <button *ngIf="note?.status !== 'active'" class="px-2 py-1 rounded border" (click)="restore()">Restore</button>
       <button class="px-2 py-1 rounded border border-red-500 text-red-600" (click)="softDelete()">Delete</button>
     </div>
   </div>

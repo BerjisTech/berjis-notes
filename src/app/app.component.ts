@@ -14,6 +14,7 @@ export class AppComponent {
   authed: boolean | null = null;
   recents: Array<Note> = [];
   activeNote: Note | null = null;
+  filter: 'active' | 'archived' | 'deleted' = 'active';
 
   constructor(private router: Router, private api: ApiService, private notes: NotesService) { }
 
@@ -22,7 +23,7 @@ export class AppComponent {
       const res = await this.api.ensureAuth();
       this.authed = !!res?.data?.valid;
       if (this.authed) {
-        this.recents = this.notes.list(['active']);
+        this.recents = await this.notes.list([this.filter]);
       } else {
         this.recents = [];
         this.activeNote = null;
@@ -38,5 +39,19 @@ export class AppComponent {
   }
 
 
-  select(n: Note) { this.activeNote = n; }
+  select(n: Note) { 
+    this.router.navigate(['/note', n.id]);
+   }
+
+  async setFilter(f: 'active'|'archived'|'deleted') {
+    this.filter = f;
+    this.activeNote = null;
+    this.recents = await this.notes.list([this.filter]);
+  }
+
+  // Sync status bindings
+  get syncMode() { return this.notes.syncMode; }
+  get isSaving() { return this.notes.isSaving; }
+  get lastSavedAt() { return this.notes.lastSavedAt; }
+  get lastError() { return this.notes.lastError; }
 }

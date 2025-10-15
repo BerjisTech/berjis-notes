@@ -24,7 +24,7 @@ export class HomePageComponent {
       const res = await this.api.ensureAuth();
       this.authed = !!res?.data?.valid;
       if (this.authed) {
-        this.recents = this.notes.list(['active']);
+        this.recents = await this.notes.list(['active']);
       } else {
         this.recents = [];
         this.activeNote = null;
@@ -34,5 +34,7 @@ export class HomePageComponent {
     }
   }
 
-  select(n: Note) { this.activeNote = n; }
+  select(n: Note) {
+    this.router.navigate(['/note', n.id]);
+   }
 }
