@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { ApiService } from '../../api.service';
+import { NotesService, Note } from '../../notes.service';
 
 @Component({
   standalone: true,
@@ -11,10 +12,10 @@ import { ApiService } from '../../api.service';
 })
 export class HomePageComponent {
   authed: boolean | null = null;
-  recents: Array<{ id: string; title: string; updatedAt: string }>= [];
-  activeNote: { id: string; title: string; updatedAt: string } | null = null;
+  recents: Note[] = [];
+  activeNote: Note | null = null;
 
-  constructor(private api: ApiService, private router: Router) {
+  constructor(private api: ApiService, private router: Router, private notes: NotesService) {
     this.init();
   }
 
@@ -23,12 +24,7 @@ export class HomePageComponent {
       const res = await this.api.ensureAuth();
       this.authed = !!res?.data?.valid;
       if (this.authed) {
-        // Placeholder recent notes; wire to API when available
-        this.recents = [
-          { id: 'welcome', title: 'Welcome to Berjis Notes', updatedAt: new Date().toISOString() },
-          { id: 'demo', title: 'Project kickoff notes', updatedAt: new Date(Date.now() - 86400000).toISOString() },
-          { id: 'ideas', title: 'Ideas scratchpad', updatedAt: new Date(Date.now() - 3*86400000).toISOString() }
-        ];
+        this.recents = this.notes.list(['active']);
       } else {
         this.recents = [];
         this.activeNote = null;
@@ -38,6 +34,5 @@ export class HomePageComponent {
     }
   }
 
-  select(n: { id: string; title: string; updatedAt: string }) { this.activeNote = n; }
+  select(n: Note) { this.activeNote = n; }
 }
-

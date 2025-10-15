@@ -1,2 +1,104 @@
-<div class="border rounded p-4">Notes editor placeholder (DIY collab slot)</div>
+<div class="w-full max-w-4xl mx-auto py-4">
+  <!-- Top bar: title + actions -->
+  <div class="flex items-center justify-between gap-3 mb-3">
+    <input
+      class="flex-1 text-2xl font-semibold outline-none bg-transparent border-b border-gray-200 focus:border-gray-400 py-1"
+      placeholder="Untitled"
+      [(ngModel)]="note!.title"
+      (ngModelChange)="onTitleChange()"
+    />
+    <div class="flex items-center gap-2">
+      <button class="px-2 py-1 rounded border" (click)="archive()">Archive</button>
+      <button class="px-2 py-1 rounded border border-red-500 text-red-600" (click)="softDelete()">Delete</button>
+    </div>
+  </div>
 
+  <!-- Formatting toolbar -->
+  <div class="flex flex-wrap items-center gap-1 p-2 border rounded bg-white sticky top-0 z-10">
+    <button class="px-2 py-1 border rounded" title="Undo" (click)="exec('undo')">↶</button>
+    <button class="px-2 py-1 border rounded" title="Redo" (click)="exec('redo')">↷</button>
+    <span class="mx-1">|</span>
+    <select class="px-2 py-1 border rounded" title="Font" (change)="exec('fontName', $any($event.target).value)">
+      <option value="">Font</option>
+      <option>Arial</option>
+      <option>Georgia</option>
+      <option>Times New Roman</option>
+      <option>Courier New</option>
+      <option>Verdana</option>
+    </select>
+    <select class="px-2 py-1 border rounded" title="Size" (change)="exec('fontSize', $any($event.target).value)">
+      <option value="">Size</option>
+      <option value="2">Small</option>
+      <option value="3">Normal</option>
+      <option value="4">Large</option>
+      <option value="5">X-Large</option>
+    </select>
+    <span class="mx-1">|</span>
+    <button class="px-2 py-1 border rounded font-bold" title="Bold" (click)="exec('bold')">B</button>
+    <button class="px-2 py-1 border rounded italic" title="Italic" (click)="exec('italic')">I</button>
+    <button class="px-2 py-1 border rounded underline" title="Underline" (click)="exec('underline')">U</button>
+    <button class="px-2 py-1 border rounded line-through" title="Strikethrough" (click)="exec('strikeThrough')">S</button>
+    <span class="mx-1">|</span>
+    <label class="px-2 py-1 border rounded cursor-pointer" title="Text color">
+      A
+      <input type="color" class="hidden" [(ngModel)]="foreColor" (change)="exec('foreColor', foreColor)" />
+    </label>
+    <label class="px-2 py-1 border rounded cursor-pointer" title="Highlight">
+      🖍
+      <input type="color" class="hidden" [(ngModel)]="backColor" (change)="exec('hiliteColor', backColor)" />
+    </label>
+    <span class="mx-1">|</span>
+    <button class="px-2 py-1 border rounded" title="Left" (click)="exec('justifyLeft')">⟸</button>
+    <button class="px-2 py-1 border rounded" title="Center" (click)="exec('justifyCenter')">≡</button>
+    <button class="px-2 py-1 border rounded" title="Right" (click)="exec('justifyRight')">⟹</button>
+    <button class="px-2 py-1 border rounded" title="Justify" (click)="exec('justifyFull')">⇔</button>
+    <span class="mx-1">|</span>
+    <button class="px-2 py-1 border rounded" title="Indent" (click)="exec('indent')">⇥</button>
+    <button class="px-2 py-1 border rounded" title="Outdent" (click)="exec('outdent')">⇤</button>
+    <button class="px-2 py-1 border rounded" title="Numbered list" (click)="exec('insertOrderedList')">1.</button>
+    <button class="px-2 py-1 border rounded" title="Bulleted list" (click)="exec('insertUnorderedList')">•</button>
+    <button class="px-2 py-1 border rounded" title="Quote" (click)="applyBlock('blockquote')">❝❞</button>
+    <button class="px-2 py-1 border rounded" title="Reset formatting" (click)="resetFormatting()">⌫Fmt</button>
+    <span class="mx-1">|</span>
+    <button class="px-2 py-1 border rounded" title="Link" (click)="insertLink()">🔗</button>
+    <button class="px-2 py-1 border rounded" title="Unlink" (click)="unlink()">⨂</button>
+    <label class="px-2 py-1 border rounded cursor-pointer" title="Attachment">
+      📎
+      <input type="file" class="hidden" (change)="insertImage($any($event.target).files)" />
+    </label>
+    <div class="relative">
+      <button class="px-2 py-1 border rounded" title="Emoji" (click)="emojiPickerOpen = !emojiPickerOpen">😊</button>
+      <div *ngIf="emojiPickerOpen" class="absolute mt-1 p-2 border rounded bg-white shadow grid grid-cols-6 gap-1 z-20">
+        <button class="text-xl" *ngFor="let e of ['😀','😁','😂','🤣','😊','😍','😎','🤔','👍','🙏','🔥','💡','✅','❗','⭐']" (click)="insertEmoji(e)">{{e}}</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Editor -->
+  <div
+    #editor
+    class="min-h-[300px] p-3 mt-2 shadow-inset outline-none"
+    contenteditable="true"
+    (input)="onEditorInput()"
+    (keydown)="keydown($event)"
+    spellcheck="true"
+  ></div>
+
+  <!-- Todo list -->
+  <div class="mt-6">
+    <div class="flex items-center justify-between mb-2">
+      <div class="text-sm font-semibold">Todo list</div>
+      <button class="px-2 py-1 border rounded" (click)="addTodo()">Add item</button>
+    </div>
+    <div *ngIf="note?.todos?.length; else emptyTodos">
+      <div *ngFor="let t of note!.todos" class="flex items-center gap-2 mb-1">
+        <input type="checkbox" [(ngModel)]="t.done" (change)="toggleTodo(t)" />
+        <input class="flex-1 border-b outline-none py-0.5" placeholder="Todo..." [(ngModel)]="t.text" (ngModelChange)="onTodoTextChange()" />
+        <button class="px-2 py-1 border rounded" (click)="removeTodo(t.id)">✕</button>
+      </div>
+    </div>
+    <ng-template #emptyTodos>
+      <div class="text-xs text-gray-500">No todos yet.</div>
+    </ng-template>
+  </div>
+</div>
