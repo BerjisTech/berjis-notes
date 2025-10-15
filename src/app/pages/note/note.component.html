@@ -18,7 +18,7 @@
         </div>
       </div>
 
-      <div #editor class="text flex-grow mt-5" contenteditable="true" (input)="onEditorInput()"
+      <div #editor class="text flex-grow mt-5 pe-[60px]" contenteditable="true" (input)="onEditorInput()"
         (keydown)="keydown($event)" spellcheck="true"></div>
 
       <!-- Todo list -->
@@ -41,10 +41,9 @@
       </div>
 
       <!-- Formatting toolbar -->
-      <div class="mb-5 flex flex-wrap items-center gap-1 p-2 border rounded bg-white sticky top-0 z-10">
+      <div class="absolute mb-5 flex flex-col flex-wrap items-start gap-1 p-2 border rounded bg-white top-0 right-0 w-[50px] h-full overflow-x-hidden overflow-y-auto">
         <button class="px-2 py-1 border rounded" title="Undo" (click)="exec('undo')">↶</button>
         <button class="px-2 py-1 border rounded" title="Redo" (click)="exec('redo')">↷</button>
-        <span class="mx-1">|</span>
         <select class="px-2 py-1 border rounded" title="Font" (change)="exec('fontName', $any($event.target).value)">
           <option value="">Font</option>
           <option>Arial</option>
@@ -60,13 +59,13 @@
           <option value="4">Large</option>
           <option value="5">X-Large</option>
         </select>
-        <span class="mx-1">|</span>
+        
         <button class="px-2 py-1 border rounded font-bold" title="Bold" (click)="exec('bold')">B</button>
         <button class="px-2 py-1 border rounded italic" title="Italic" (click)="exec('italic')">I</button>
         <button class="px-2 py-1 border rounded underline" title="Underline" (click)="exec('underline')">U</button>
         <button class="px-2 py-1 border rounded line-through" title="Strikethrough"
           (click)="exec('strikeThrough')">S</button>
-        <span class="mx-1">|</span>
+          
         <label class="px-2 py-1 border rounded cursor-pointer" title="Text color">
           A
           <input type="color" class="hidden" [(ngModel)]="foreColor" (change)="exec('foreColor', foreColor)" />
@@ -75,19 +74,19 @@
           🖍
           <input type="color" class="hidden" [(ngModel)]="backColor" (change)="exec('hiliteColor', backColor)" />
         </label>
-        <span class="mx-1">|</span>
+        
         <button class="px-2 py-1 border rounded" title="Left" (click)="exec('justifyLeft')">⟸</button>
         <button class="px-2 py-1 border rounded" title="Center" (click)="exec('justifyCenter')">≡</button>
         <button class="px-2 py-1 border rounded" title="Right" (click)="exec('justifyRight')">⟹</button>
         <button class="px-2 py-1 border rounded" title="Justify" (click)="exec('justifyFull')">⇔</button>
-        <span class="mx-1">|</span>
+        
         <button class="px-2 py-1 border rounded" title="Indent" (click)="exec('indent')">⇥</button>
         <button class="px-2 py-1 border rounded" title="Outdent" (click)="exec('outdent')">⇤</button>
         <button class="px-2 py-1 border rounded" title="Numbered list" (click)="exec('insertOrderedList')">1.</button>
         <button class="px-2 py-1 border rounded" title="Bulleted list" (click)="exec('insertUnorderedList')">•</button>
         <button class="px-2 py-1 border rounded" title="Quote" (click)="applyBlock('blockquote')">❝❞</button>
         <button class="px-2 py-1 border rounded" title="Reset formatting" (click)="resetFormatting()">⌫Fmt</button>
-        <span class="mx-1">|</span>
+        
         <button class="px-2 py-1 border rounded" title="Link" (click)="insertLink()">🔗</button>
         <button class="px-2 py-1 border rounded" title="Unlink" (click)="unlink()">⨂</button>
         <label class="px-2 py-1 border rounded cursor-pointer" title="Attachment">
