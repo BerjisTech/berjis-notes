@@ -2,6 +2,10 @@
 @import "tailwindcss";
 @custom-variant dark (&:where(.dark, .dark *));
 
+* {
+    line-height: 25px !important;
+}
+
 .paper {
     width: 100%;
     height: 98vh;
@@ -37,7 +41,6 @@
     left: 55px;
     bottom: 10px;
     right: 10px;
-    line-height: 25px;
     font-family: 'Indie Flower';
     overflow-x: none;
     overflow-y: auto;
@@ -64,4 +67,42 @@
 
 .hole-bottom {
     bottom: 10%;
+}
+
+pre::-webkit-scrollbar {
+    background-color: #3a3a3a;
+}
+
+pre::-webkit-scrollbar-thumb {
+    background: #f2dede;
+    border-radius: 1px;
+}
+
+pre {
+    overflow-x: auto;
+    background: #3a3a3a;
+    color: #f2dede;
+    padding: 20px;
+    -webkit-box-shadow: 0 0 8px 0 rgba(0, 0, 0, 0.75);
+    -moz-box-shadow: 0 0 8px 0 rgba(193, 66, 66, 0.5);
+    box-shadow: 0 0 8px 0 rgba(193, 66, 66, 0.5);
+
+    code {
+        background-color: transparent !important;
+        border-radius: 0px !important;
+        padding: 0 !important;
+        color: #f2dede !important;
+    }
+}
+
+code {
+    background-color: #f4f4f4;
+    /* Light gray background */
+    border-radius: 10px;
+    /* Specific styles for the code within the pre tag, if needed */
+    /* For example, you might want to adjust padding or color slightly */
+    padding: 0 10px;
+    /* Remove extra padding if pre already handles it */
+    color: #680303;
+    /* Slightly lighter color for the code itself */
 }

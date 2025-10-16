@@ -9,7 +9,8 @@
           [(ngModel)]="note!.title" (ngModelChange)="onTitleChange()" />
         <div class="flex items-baseline gap-2">
           <span class="text-xs text-gray-500" *ngIf="notes?.isSaving">Saving.</span>
-          <span class="text-xs text-gray-500" *ngIf="!notes?.isSaving && notes?.lastSavedAt">Saved {{ notes?.lastSavedAt | date:'shortTime' }}</span>
+          <span class="text-xs text-gray-500" *ngIf="!notes?.isSaving && notes?.lastSavedAt">Saved {{ notes?.lastSavedAt
+            | date:'shortTime' }}</span>
           <span *ngIf="note?.status === 'active'" class="cursor-pointer" (click)="archive()">Archive</span>
           <span *ngIf="note?.status !== 'active'" class="cursor-pointer" (click)="restore()">Restore</span>
           <span class="cursor-pointer" (click)="softDelete()">Delete</span>
@@ -28,20 +29,22 @@
           </div>
         </div>
 
-        <div *ngIf="!codeMode" class="w-full">
-          <div #richEditor class="text flex-grow pe-[10px] min-h-[400px] p-3 prose"
-            contenteditable="true" (input)="onRichInput()" (keydown)="keydown($event)" (mouseup)="onSelectionChange()" (keyup)="onSelectionChange()" (click)="onRichClick($event)" (paste)="onRichPaste($event)"
+        <div *ngIf="!codeMode" class="w-full mt-[10px]">
+          <div #richEditor class="text flex-grow pe-[10px] h-[calc(100vh-200px)] p-3 prose" contenteditable="true"
+            (input)="onRichInput()" (keydown)="keydown($event)" (mouseup)="onSelectionChange()"
+            (keyup)="onSelectionChange()" (click)="onRichClick($event)" (paste)="onRichPaste($event)"
             (contextmenu)="openContextMenu($event)"></div>
         </div>
-        <div *ngIf="codeMode" class="w-full">
-          <textarea #mdEditor class="w-full h-[500px] p-2 font-mono text-sm outline-none focus:outline-none"
-            [placeholder]="editorPlaceholder"
-            [(ngModel)]="note!.content" (ngModelChange)="onContentChange()" (keydown)="keydown($event)" (contextmenu)="openContextMenu($event)"></textarea>
+        <div *ngIf="codeMode" class="w-full mt-[20px]">
+          <textarea #mdEditor class="w-full h-[calc(100vh-200px)] p-2 font-mono text-sm outline-none focus:outline-none"
+            [placeholder]="editorPlaceholder" [(ngModel)]="note!.content" (ngModelChange)="onContentChange()"
+            (keydown)="keydown($event)" (contextmenu)="openContextMenu($event)"></textarea>
         </div>
       </div>
 
       <!-- Custom context menu -->
-      <div *ngIf="cmOpen" class="fixed z-50 bg-white shadow text-sm" [ngStyle]="{ left: cmX + 'px', top: cmY + 'px' }">
+      <div #cmRef *ngIf="cmOpen" class="fixed z-50 bg-white shadow text-sm"
+        [ngStyle]="{ left: cmX + 'px', top: cmY + 'px' }">
         <div class="px-3 py-1 hover:bg-gray-100 cursor-pointer" (click)="cmHeading(1)">Heading 1</div>
         <div class="px-3 py-1 hover:bg-gray-100 cursor-pointer" (click)="cmHeading(2)">Heading 2</div>
         <div class="px-3 py-1 hover:bg-gray-100 cursor-pointer" (click)="cmHeading(3)">Heading 3</div>

@@ -30,6 +30,7 @@ import { Note, NotesService, TodoItem } from '../../notes.service';
 export class NotePageComponent implements OnInit, OnDestroy {
   @ViewChild('mdEditor', { static: false }) mdEditorRef?: ElementRef<HTMLTextAreaElement>;
   @ViewChild('richEditor', { static: false }) editorRef?: ElementRef<HTMLDivElement>;
+  @ViewChild('cmRef', { static: false }) cmRef?: ElementRef<HTMLDivElement>;
 
   note: Note | null = null;
   pendingSave?: any;
@@ -66,12 +67,22 @@ export class NotePageComponent implements OnInit, OnDestroy {
     });
     // Selection change listener for floating toolbar
     document.addEventListener('selectionchange', this.onSelectionChange);
+    // Global listeners to close overlays on outside click / escape
+    document.addEventListener('mousedown', this.onDocMouseDown);
+    document.addEventListener('keydown', this.onDocKeyDown as any);
+    // Close menus on scroll/resize
+    window.addEventListener('scroll', this.onWindowScroll, true);
+    window.addEventListener('resize', this.onWindowResize);
   }
 
   ngOnDestroy(): void {
     if (this.pendingSave) clearTimeout(this.pendingSave);
     if (this.routeSub) this.routeSub.unsubscribe();
     document.removeEventListener('selectionchange', this.onSelectionChange);
+    document.removeEventListener('mousedown', this.onDocMouseDown);
+    document.removeEventListener('keydown', this.onDocKeyDown as any);
+    window.removeEventListener('scroll', this.onWindowScroll, true);
+    window.removeEventListener('resize', this.onWindowResize);
   }
 
   onTitleChange() { this.queueSave(); }
@@ -603,6 +614,31 @@ export class NotePageComponent implements OnInit, OnDestroy {
     }
     this.onRichInput();
   }
+
+  // Dismiss context/slash/selection UI on outside click or Escape
+  onDocMouseDown = (e: MouseEvent) => {
+    const target = e.target as Node;
+    if (this.cmOpen) {
+      const menu = this.cmRef?.nativeElement;
+      if (menu && !menu.contains(target)) this.cmOpen = false;
+    }
+    if (this.selOpen) {
+      // Close selection toolbar if clicking outside editor or toolbar itself
+      const inEditor = this.isInEditor(target);
+      this.selOpen = !!inEditor && this.selOpen; // keep if still in editor
+      if (!inEditor) { this.linkMode = false; }
+    }
+    if (this.slashOpen) {
+      // Simple outside click closes the slash palette
+      this.slashOpen = false;
+    }
+  }
+  onDocKeyDown = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') { this.cmOpen = false; this.slashOpen = false; this.selOpen = false; this.linkMode = false; }
+  }
+
+  onWindowScroll = () => { if (this.cmOpen) this.cmOpen = false; if (this.slashOpen) this.slashOpen = false; if (this.selOpen) { this.selOpen = false; this.linkMode = false; } }
+  onWindowResize = () => { if (this.cmOpen) this.cmOpen = false; if (this.slashOpen) this.slashOpen = false; if (this.selOpen) { this.selOpen = false; this.linkMode = false; } }
 }
 
 
