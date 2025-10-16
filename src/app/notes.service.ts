@@ -13,7 +13,7 @@ export interface TodoItem {
 export interface Note {
   id: string;
   title?: string;
-  content?: string; // HTML stored from contenteditable
+  content?: string; // Markdown (legacy HTML still supported)
   todos?: TodoItem[];
   status: NoteStatus;
   createdAt: string; // ISO
@@ -130,7 +130,7 @@ export class NotesService {
   /** Save a note if it has any content (title, content HTML, or todos). */
   async save(note: Note): Promise<Note | undefined> {
     const hasTitle = !!note.title && note.title.trim().length > 0;
-    const hasContent = !!note.content && note.content.replace(/<[^>]*>/g, '').trim().length > 0; // strip HTML
+    const hasContent = !!note.content && this.stripFormatting(note.content).trim().length > 0; // strip MD/HTML
     const hasTodos = !!note.todos && note.todos.some(t => t.text.trim().length > 0);
     if (!hasTitle && !hasContent && !hasTodos) {
       // If empty and exists, do not create/save; if it existed, leave untouched.
@@ -181,7 +181,7 @@ export class NotesService {
       if (!localNotes.length) { localStorage.setItem(this.MIGRATION_FLAG, 'true'); return; }
       for (const n of localNotes) {
         const hasTitle = !!n.title && n.title.trim().length > 0;
-        const hasContent = !!n.content && n.content.replace(/<[^>]*>/g, '').trim().length > 0;
+        const hasContent = !!n.content && this.stripFormatting(n.content).trim().length > 0;
         const hasTodos = !!n.todos && n.todos.some(t => t.text.trim().length > 0);
         if (!hasTitle && !hasContent && !hasTodos) continue;
         let created: Note | null = null;
@@ -227,4 +227,24 @@ export class NotesService {
     this.preferRemote = false; this.syncMode = 'local'; this.lastError = (e?.message || 'offline, saving locally');
   }
   purge(id: string) { delete this.cache[id]; this.persist(); }
+
+  // Strip HTML and Markdown syntax to detect real text content
+  private stripFormatting(s: string): string {
+    try {
+      let t = s || '';
+      t = t.replace(/```[\s\S]*?```/g, ' '); // fenced code
+      t = t.replace(/`[^`]*`/g, ' '); // inline code
+      t = t.replace(/<[^>]*>/g, ' '); // html tags
+      t = t.replace(/!\[[^\]]*\]\([^\)]*\)/g, ' '); // images
+      t = t.replace(/\[([^\]]+)\]\([^\)]*\)/g, '$1'); // links -> text
+      t = t.replace(/[\*_]{1,3}([^\*_]+)[\*_]{1,3}/g, '$1'); // emphasis
+      t = t.replace(/^>\s?/gm, ''); // blockquote
+      t = t.replace(/^\s{0,3}(\*|-|\+)\s+/gm, ''); // ul
+      t = t.replace(/^\s{0,3}\d+\.\s+/gm, ''); // ol
+      t = t.replace(/\[([ xX])]\s+/g, ''); // tasks
+      t = t.replace(/^#{1,6}\s+/gm, ''); // headings
+      t = t.replace(/\s+/g, ' ');
+      return t.trim();
+    } catch { return (s || '').trim(); }
+  }
 }

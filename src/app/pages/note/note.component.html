@@ -8,102 +8,95 @@
         <input class="flex-1 text-2xl font-semibold outline-none bg-transparent mt-5" placeholder="Untitled"
           [(ngModel)]="note!.title" (ngModelChange)="onTitleChange()" />
         <div class="flex items-baseline gap-2">
-          <span class="text-xs text-gray-500" *ngIf="notes?.isSaving">Saving…</span>
-          <span class="text-xs text-gray-500" *ngIf="!notes?.isSaving && notes?.lastSavedAt">Saved {{ notes?.lastSavedAt
-            |
-            date:'shortTime' }}</span>
+          <span class="text-xs text-gray-500" *ngIf="notes?.isSaving">Saving.</span>
+          <span class="text-xs text-gray-500" *ngIf="!notes?.isSaving && notes?.lastSavedAt">Saved {{ notes?.lastSavedAt | date:'shortTime' }}</span>
           <span *ngIf="note?.status === 'active'" class="cursor-pointer" (click)="archive()">Archive</span>
           <span *ngIf="note?.status !== 'active'" class="cursor-pointer" (click)="restore()">Restore</span>
           <span class="cursor-pointer" (click)="softDelete()">Delete</span>
         </div>
       </div>
 
-      <div #editor class="text flex-grow mt-5 pe-[60px]" contenteditable="true" (input)="onEditorInput()"
-        (keydown)="keydown($event)" spellcheck="true"></div>
-
-      <!-- Todo list -->
-      <div class="mt-6">
+      <!-- Editor area: Rich editable preview OR raw Markdown -->
+      <div class="mt-5 w-full pe-3">
         <div class="flex items-center justify-between mb-2">
-          <div class="text-sm font-semibold">Todo list</div>
-          <button class="px-2 py-1 border rounded" (click)="addTodo()">Add item</button>
-        </div>
-        <div *ngIf="note?.todos?.length; else emptyTodos">
-          <div *ngFor="let t of note!.todos" class="flex items-center gap-2 mb-1">
-            <input type="checkbox" [(ngModel)]="t.done" (change)="toggleTodo(t)" />
-            <input class="flex-1 border-b outline-none py-0.5" placeholder="Todo..." [(ngModel)]="t.text"
-              (ngModelChange)="onTodoTextChange()" />
-            <button class="px-2 py-1 border rounded" (click)="removeTodo(t.id)">✕</button>
+          <div class="text-sm text-gray-500">{{ codeMode ? 'Markdown' : 'Rich View' }}</div>
+          <div class="flex items-center gap-2">
+            <button class="px-2 py-1 border rounded" (click)="toggleCodeMode()">
+              <span *ngIf="codeMode">Preview</span>
+              <span *ngIf="!codeMode">&lt;/&gt;</span>
+            </button>
           </div>
         </div>
-        <ng-template #emptyTodos>
-          <div class="text-xs text-gray-500">No todos yet.</div>
-        </ng-template>
+
+        <div *ngIf="!codeMode" class="w-full">
+          <div #richEditor class="text flex-grow pe-[10px] min-h-[400px] p-3 prose"
+            contenteditable="true" (input)="onRichInput()" (keydown)="keydown($event)" (mouseup)="onSelectionChange()" (keyup)="onSelectionChange()" (click)="onRichClick($event)" (paste)="onRichPaste($event)"
+            (contextmenu)="openContextMenu($event)"></div>
+        </div>
+        <div *ngIf="codeMode" class="w-full">
+          <textarea #mdEditor class="w-full h-[500px] p-2 font-mono text-sm outline-none focus:outline-none"
+            [placeholder]="editorPlaceholder"
+            [(ngModel)]="note!.content" (ngModelChange)="onContentChange()" (keydown)="keydown($event)" (contextmenu)="openContextMenu($event)"></textarea>
+        </div>
       </div>
 
-      <!-- Formatting toolbar -->
-      <div class="absolute mb-5 flex flex-col flex-wrap items-start gap-1 p-2 border rounded bg-white top-0 right-0 w-[50px] h-full overflow-x-hidden overflow-y-auto">
-        <button class="px-2 py-1 border rounded" title="Undo" (click)="exec('undo')">↶</button>
-        <button class="px-2 py-1 border rounded" title="Redo" (click)="exec('redo')">↷</button>
-        <select class="px-2 py-1 border rounded" title="Font" (change)="exec('fontName', $any($event.target).value)">
-          <option value="">Font</option>
-          <option>Arial</option>
-          <option>Georgia</option>
-          <option>Times New Roman</option>
-          <option>Courier New</option>
-          <option>Verdana</option>
-        </select>
-        <select class="px-2 py-1 border rounded" title="Size" (change)="exec('fontSize', $any($event.target).value)">
-          <option value="">Size</option>
-          <option value="2">Small</option>
-          <option value="3">Normal</option>
-          <option value="4">Large</option>
-          <option value="5">X-Large</option>
-        </select>
-        
-        <button class="px-2 py-1 border rounded font-bold" title="Bold" (click)="exec('bold')">B</button>
-        <button class="px-2 py-1 border rounded italic" title="Italic" (click)="exec('italic')">I</button>
-        <button class="px-2 py-1 border rounded underline" title="Underline" (click)="exec('underline')">U</button>
-        <button class="px-2 py-1 border rounded line-through" title="Strikethrough"
-          (click)="exec('strikeThrough')">S</button>
-          
-        <label class="px-2 py-1 border rounded cursor-pointer" title="Text color">
-          A
+      <!-- Custom context menu -->
+      <div *ngIf="cmOpen" class="fixed z-50 bg-white shadow text-sm" [ngStyle]="{ left: cmX + 'px', top: cmY + 'px' }">
+        <div class="px-3 py-1 hover:bg-gray-100 cursor-pointer" (click)="cmHeading(1)">Heading 1</div>
+        <div class="px-3 py-1 hover:bg-gray-100 cursor-pointer" (click)="cmHeading(2)">Heading 2</div>
+        <div class="px-3 py-1 hover:bg-gray-100 cursor-pointer" (click)="cmHeading(3)">Heading 3</div>
+        <div class="px-3 py-1 hover:bg-gray-100 cursor-pointer" (click)="cmBlockquote()">Blockquote</div>
+        <div class="px-3 py-1 hover:bg-gray-100 cursor-pointer" (click)="cmUl()">Bulleted list</div>
+        <div class="px-3 py-1 hover:bg-gray-100 cursor-pointer" (click)="cmOl()">Numbered list</div>
+        <div class="px-3 py-1 hover:bg-gray-100 cursor-pointer" (click)="cmTask()">Task</div>
+        <div class="px-3 py-1 hover:bg-gray-100 cursor-pointer" (click)="cmInlineCode()">Inline code</div>
+        <div class="px-3 py-1 hover:bg-gray-100 cursor-pointer" (click)="cmCodeBlock()">Code block</div>
+        <div class="px-3 py-1 hover:bg-gray-100 cursor-pointer" (click)="cmLink()">Link</div>
+        <div class="px-3 py-1 hover:bg-gray-100 cursor-pointer" (click)="cmImage()">Image</div>
+        <div class="px-3 py-1 hover:bg-gray-100 cursor-pointer" (click)="closeContextMenu()">Close</div>
+      </div>
+
+      <!-- Selection toolbar -->
+      <div *ngIf="selOpen" class="fixed z-50 bg-white border rounded shadow text-xs flex items-center gap-1 p-1"
+        [ngStyle]="{ left: (selX - 60) + 'px', top: (selY - 36) + 'px' }">
+        <button class="px-1" (click)="exec('bold')"><b>B</b></button>
+        <button class="px-1 italic" (click)="exec('italic')">I</button>
+        <button class="px-1 underline" (click)="exec('underline')">U</button>
+        <button class="px-1 line-through" (click)="exec('strikeThrough')">S</button>
+        <button class="px-1" (click)="applyBlock('blockquote')">❝</button>
+        <button class="px-1" (click)="exec('insertUnorderedList')">•</button>
+        <button class="px-1" (click)="exec('insertOrderedList')">1.</button>
+        <button class="px-1" (click)="openLinkMode()">🔗</button>
+        <label class="px-1 cursor-pointer" title="Text color">A
           <input type="color" class="hidden" [(ngModel)]="foreColor" (change)="exec('foreColor', foreColor)" />
         </label>
-        <label class="px-2 py-1 border rounded cursor-pointer" title="Highlight">
-          🖍
+        <label class="px-1 cursor-pointer" title="Highlight">🖍
           <input type="color" class="hidden" [(ngModel)]="backColor" (change)="exec('hiliteColor', backColor)" />
         </label>
-        
-        <button class="px-2 py-1 border rounded" title="Left" (click)="exec('justifyLeft')">⟸</button>
-        <button class="px-2 py-1 border rounded" title="Center" (click)="exec('justifyCenter')">≡</button>
-        <button class="px-2 py-1 border rounded" title="Right" (click)="exec('justifyRight')">⟹</button>
-        <button class="px-2 py-1 border rounded" title="Justify" (click)="exec('justifyFull')">⇔</button>
-        
-        <button class="px-2 py-1 border rounded" title="Indent" (click)="exec('indent')">⇥</button>
-        <button class="px-2 py-1 border rounded" title="Outdent" (click)="exec('outdent')">⇤</button>
-        <button class="px-2 py-1 border rounded" title="Numbered list" (click)="exec('insertOrderedList')">1.</button>
-        <button class="px-2 py-1 border rounded" title="Bulleted list" (click)="exec('insertUnorderedList')">•</button>
-        <button class="px-2 py-1 border rounded" title="Quote" (click)="applyBlock('blockquote')">❝❞</button>
-        <button class="px-2 py-1 border rounded" title="Reset formatting" (click)="resetFormatting()">⌫Fmt</button>
-        
-        <button class="px-2 py-1 border rounded" title="Link" (click)="insertLink()">🔗</button>
-        <button class="px-2 py-1 border rounded" title="Unlink" (click)="unlink()">⨂</button>
-        <label class="px-2 py-1 border rounded cursor-pointer" title="Attachment">
-          📎
-          <input type="file" class="hidden" (change)="insertImage($any($event.target).files)" />
-        </label>
-        <div class="relative">
-          <button class="px-2 py-1 border rounded" title="Emoji"
-            (click)="emojiPickerOpen = !emojiPickerOpen">😊</button>
-          <div *ngIf="emojiPickerOpen"
-            class="absolute mt-1 p-2 border rounded bg-white shadow grid grid-cols-6 gap-1 z-20">
-            <button class="text-xl"
-              *ngFor="let e of ['😀','😁','😂','🤣','😊','😍','😎','🤔','👍','🙏','🔥','💡','✅','❗','⭐']"
-              (click)="insertEmoji(e)">{{e}}</button>
-          </div>
+        <button class="px-1" (click)="cmInlineCode()">`</button>
+        <div *ngIf="linkMode" class="flex items-center gap-1 ms-2">
+          <input class="border rounded px-1 py-0.5 w-[180px]" placeholder="https://..." [(ngModel)]="linkHref" />
+          <button class="px-1 border rounded" (click)="applyLink()">Apply</button>
         </div>
       </div>
+
+      <!-- Slash command palette -->
+      <div *ngIf="slashOpen" class="fixed z-50 bg-white border rounded shadow text-sm p-1 w-[200px]"
+        [ngStyle]="{ left: slashX + 'px', top: slashY + 'px' }">
+        <div class="px-2 py-1 hover:bg-gray-100 cursor-pointer" (click)="slashPick('h1')">Heading 1</div>
+        <div class="px-2 py-1 hover:bg-gray-100 cursor-pointer" (click)="slashPick('h2')">Heading 2</div>
+        <div class="px-2 py-1 hover:bg-gray-100 cursor-pointer" (click)="slashPick('quote')">Quote</div>
+        <div class="px-2 py-1 hover:bg-gray-100 cursor-pointer" (click)="slashPick('ul')">Bulleted list</div>
+        <div class="px-2 py-1 hover:bg-gray-100 cursor-pointer" (click)="slashPick('ol')">Numbered list</div>
+        <div class="px-2 py-1 hover:bg-gray-100 cursor-pointer" (click)="slashPick('task')">Task</div>
+        <div class="px-2 py-1 hover:bg-gray-100 cursor-pointer" (click)="slashPick('code')">Code block</div>
+        <div class="px-2 py-1 hover:bg-gray-100 cursor-pointer" (click)="slashPick('table')">Table</div>
+        <div class="px-2 py-1 hover:bg-gray-100 cursor-pointer" (click)="slashPick('mention')">Mention</div>
+        <div class="px-2 py-1 hover:bg-gray-100 cursor-pointer" (click)="slashPick('equation')">Equation (LaTeX)</div>
+        <div class="px-2 py-1 hover:bg-gray-100 cursor-pointer" (click)="slashPick('color')">Text color</div>
+        <div class="px-2 py-1 hover:bg-gray-100 cursor-pointer" (click)="slashPick('highlight')">Highlight</div>
+      </div>
+
     </div>
     <div class="holes hole-top"></div>
     <div class="holes hole-middle"></div>
