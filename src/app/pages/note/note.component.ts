@@ -43,6 +43,7 @@ export class NotePageComponent implements OnInit, OnDestroy {
   codeMode = false; // false = rich editable preview, true = raw Markdown editor
   isLegacyHtml = false; // if true, keep HTML as source instead of Markdown
   cmOpen = false; cmX = 0; cmY = 0; // context menu state
+  private savedRange: Range | null = null; // saved selection for context actions
 
   // Selection toolbar state (rich mode)
   selOpen = false; selX = 0; selY = 0;
@@ -237,26 +238,58 @@ export class NotePageComponent implements OnInit, OnDestroy {
     setTimeout(() => { this.updateRendered(true); });
   }
 
-  openContextMenu(e: MouseEvent) { e.preventDefault(); this.cmOpen = true; this.cmX = e.clientX; this.cmY = e.clientY; }
+  openContextMenu(e: MouseEvent) {
+    e.preventDefault();
+    // Save current selection so actions apply where the user right-clicked
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      const r = sel.getRangeAt(0);
+      this.savedRange = this.isInEditor(r.commonAncestorContainer) ? r.cloneRange() : null;
+    } else { this.savedRange = null; }
+    this.cmOpen = true; this.cmX = e.clientX; this.cmY = e.clientY;
+  }
   closeContextMenu() { this.cmOpen = false; }
 
-  cmHeading(level: number) { this.closeContextMenu(); if (this.codeMode) { this.insertAtCursor('\n' + '#'.repeat(level) + ' '); } else { this.applyBlock('h' + level); } }
-  cmBlockquote() { this.closeContextMenu(); if (this.codeMode) { this.insertAtCursor('\n> '); } else { this.applyBlock('blockquote'); } }
-  cmUl() { this.closeContextMenu(); if (this.codeMode) { this.insertAtCursor('\n- '); } else { this.exec('insertUnorderedList'); } }
-  cmOl() { this.closeContextMenu(); if (this.codeMode) { this.insertAtCursor('\n1. '); } else { this.exec('insertOrderedList'); } }
+  private restoreSelection() {
+    if (!this.editorRef) return;
+    const el = this.editorRef.nativeElement;
+    el.focus();
+    if (this.savedRange) {
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(this.savedRange);
+    }
+  }
+
+  cmHeading(level: number) {
+    this.closeContextMenu();
+    if (this.codeMode) { this.insertAtCursor('\n' + '#'.repeat(level) + ' '); }
+    else { this.restoreSelection(); this.applyBlock('h' + level); }
+  }
+  cmBlockquote() {
+    this.closeContextMenu();
+    if (this.codeMode) { this.insertAtCursor('\n> '); }
+    else { this.restoreSelection(); this.applyBlock('blockquote'); }
+  }
+  cmUl() {
+    this.closeContextMenu();
+    if (this.codeMode) { this.insertAtCursor('\n- '); }
+    else { this.restoreSelection(); this.exec('insertUnorderedList'); }
+  }
+  cmOl() {
+    this.closeContextMenu();
+    if (this.codeMode) { this.insertAtCursor('\n1. '); }
+    else { this.restoreSelection(); this.exec('insertOrderedList'); }
+  }
   cmTask() {
     this.closeContextMenu();
     if (this.codeMode) { this.insertAtCursor('\n- [ ] '); }
-    else {
-      const html = '<ul><li><input type="checkbox" disabled /> Task</li></ul>';
-      document.execCommand('insertHTML', false, html);
-      this.onRichInput();
-    }
+    else { this.restoreSelection(); const html = '<ul><li><input type="checkbox" /> Task</li></ul>'; document.execCommand('insertHTML', false, html); this.onRichInput(); }
   }
-  cmInlineCode() { this.closeContextMenu(); if (this.codeMode) { this.insertAtCursor('`code`'); } else { document.execCommand('insertHTML', false, '<code>code</code>'); this.onRichInput(); } }
-  cmCodeBlock() { this.closeContextMenu(); if (this.codeMode) { this.insertAtCursor('\n```\ncode\n```\n'); } else { document.execCommand('insertHTML', false, '<pre><code>code</code></pre>'); this.onRichInput(); } }
-  cmLink() { this.closeContextMenu(); if (this.codeMode) { const url = prompt('URL'); if (url) this.insertAtCursor(`[text](${url})`); } else { this.insertLink(); } }
-  cmImage() { this.closeContextMenu(); if (this.codeMode) { const url = prompt('Image URL'); if (url) this.insertAtCursor(`![alt](${url})`); } else { this.insertImageUrl(); } }
+  cmInlineCode() { this.closeContextMenu(); if (this.codeMode) { this.insertAtCursor('`code`'); } else { this.restoreSelection(); document.execCommand('insertHTML', false, '<code>code</code>'); this.onRichInput(); } }
+  cmCodeBlock() { this.closeContextMenu(); if (this.codeMode) { this.insertAtCursor('\n```\ncode\n```\n'); } else { this.restoreSelection(); document.execCommand('insertHTML', false, '<pre><code>code</code></pre>'); this.onRichInput(); } }
+  cmLink() { this.closeContextMenu(); if (this.codeMode) { const url = prompt('URL'); if (url) this.insertAtCursor(`[text](${url})`); } else { this.restoreSelection(); this.insertLink(); } }
+  cmImage() { this.closeContextMenu(); if (this.codeMode) { const url = prompt('Image URL'); if (url) this.insertAtCursor(`![alt](${url})`); } else { this.restoreSelection(); this.insertImageUrl(); } }
 
   private updateRendered(applyToRich = false) {
     if (!this.note) return;
