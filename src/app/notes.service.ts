@@ -21,7 +21,7 @@ export interface Note {
 }
 
 const STORAGE_KEY = 'berjis-notes';
-const API_BASE = 'http://notes-api.berjis.test';
+const API_BASE = 'https://notes-api.berjis.tech';
 
 @Injectable({ providedIn: 'root' })
 export class NotesService {
