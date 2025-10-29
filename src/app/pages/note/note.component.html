@@ -1,110 +1,195 @@
-<div class="w-full">
-  <!-- Top bar: title + actions -->
-
-  <!-- Editor -->
-  <div class="paper">
-    <div class="lines">
-      <div class="flex items-baseline justify-between gap-3 border-b-2 border-slate-700">
-        <input class="flex-1 text-2xl font-semibold outline-none bg-transparent mt-5" placeholder="Untitled"
-          [(ngModel)]="note!.title" (ngModelChange)="onTitleChange()" />
-        <div class="flex items-baseline gap-2">
-          <span class="text-xs text-gray-500" *ngIf="notes?.isSaving">Saving.</span>
-          <span class="text-xs text-gray-500" *ngIf="!notes?.isSaving && notes?.lastSavedAt">Saved {{ notes?.lastSavedAt
-            | date:'shortTime' }}</span>
-          <span *ngIf="note?.status === 'active'" class="cursor-pointer" (click)="archive()">Archive</span>
-          <span *ngIf="note?.status !== 'active'" class="cursor-pointer" (click)="restore()">Restore</span>
-          <span class="cursor-pointer" (click)="softDelete()">Delete</span>
-        </div>
+<div class="page-shell min-h-screen bg-neutral-100/90 text-neutral-900" [class.dark-mode]="darkMode">
+  <div class="pb-20">
+    <div class="relative h-56 w-full overflow-hidden">
+      <ng-container *ngIf="coverImage; else gradientCover">
+        <img [src]="coverImage" alt="Cover" class="h-full w-full object-cover" />
+        <div class="absolute inset-0 bg-gradient-to-t from-neutral-100 via-transparent"></div>
+      </ng-container>
+      <ng-template #gradientCover>
+        <div class="h-full w-full bg-gradient-to-br from-sky-300 via-indigo-300 to-purple-300"></div>
+      </ng-template>
+      <div class="absolute bottom-4 right-6 flex items-center gap-2">
+        <button
+          type="button"
+          class="rounded-full bg-white/80 px-4 py-2 text-sm font-medium text-neutral-600 shadow-sm transition hover:bg-white"
+          (click)="setCover()"
+        >
+          {{ coverImage ? 'Change cover' : 'Add cover' }}
+        </button>
+        <button
+          *ngIf="coverImage"
+          type="button"
+          class="rounded-full bg-white/70 px-4 py-2 text-sm text-neutral-500 transition hover:bg-white"
+          (click)="removeCover()"
+        >
+          Remove
+        </button>
       </div>
+    </div>
 
-      <!-- Editor area: Rich editable preview OR raw Markdown -->
-      <div class="mt-5 w-full pe-3">
-        <div class="flex items-center justify-between mb-2">
-          <div class="text-sm text-gray-500">{{ codeMode ? 'Markdown' : 'Rich View' }}</div>
-          <div class="flex items-center gap-2">
-            <button class="px-2 py-1 border rounded" (click)="toggleCodeMode()">
-              <span *ngIf="codeMode">Preview</span>
-              <span *ngIf="!codeMode">&lt;/&gt;</span>
+    <div class="-mt-16 mx-auto max-w-5xl rounded-3xl bg-white/90 px-6 pb-16 pt-8 shadow-xl backdrop-blur surface sm:px-12">
+      <div class="flex flex-col gap-8">
+        <div class="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+          <div class="flex items-center gap-4">
+            <button
+              type="button"
+              class="flex h-16 w-16 items-center justify-center rounded-2xl border border-neutral-200 bg-white text-3xl shadow-sm transition hover:border-sky-300 hover:shadow"
+              (click)="changeIcon()"
+              title="Change icon"
+            >
+              {{ pageIcon }}
+            </button>
+            <div>
+              <input
+                class="w-full max-w-xl bg-transparent text-4xl font-semibold tracking-tight text-neutral-900 outline-none placeholder:text-neutral-300"
+                placeholder="Untitled"
+                [(ngModel)]="note!.title"
+                (ngModelChange)="onTitleChange()"
+              />
+              <div class="mt-2 flex flex-wrap items-center gap-3 text-xs text-neutral-400">
+                <span>{{ lastSavedLabel }}</span>
+                <span class="inline-flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-sky-700">
+                  {{ notes.syncMode === 'remote' ? 'Synced' : 'Offline first' }}
+                </span>
+                <span class="inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1 text-neutral-500">
+                  {{ (note?.updatedAt | date: 'medium') || 'Draft' }}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div class="flex flex-wrap items-center gap-3 text-sm">
+            <button
+              type="button"
+              class="rounded-full border border-neutral-200 bg-white px-4 py-2 text-neutral-600 transition hover:border-neutral-300 hover:text-neutral-800"
+              (click)="toggleDarkMode()"
+            >
+              {{ darkMode ? 'Light mode' : 'Dark mode' }}
+            </button>
+            <button
+              type="button"
+              class="rounded-full border border-neutral-200 bg-white px-4 py-2 text-neutral-500 transition hover:border-neutral-300 hover:text-neutral-700"
+              (click)="archive()"
+            >
+              Archive
+            </button>
+            <button
+              type="button"
+              class="rounded-full border border-neutral-200 bg-white px-4 py-2 text-neutral-500 transition hover:border-neutral-300 hover:text-neutral-700"
+              (click)="exportMarkdown()"
+            >
+              Export Markdown
+            </button>
+            <button
+              type="button"
+              class="rounded-full border border-red-200 bg-red-50 px-4 py-2 text-red-500 transition hover:border-red-300 hover:text-red-600"
+              (click)="softDelete()"
+            >
+              Delete
             </button>
           </div>
         </div>
 
-        <div *ngIf="!codeMode" class="w-full mt-[10px]">
-          <div #richEditor class="text flex-grow pe-[10px] h-[calc(100vh-200px)] p-3 prose" contenteditable="true"
-            (input)="onRichInput()" (keydown)="keydown($event)" (mouseup)="onSelectionChange()"
-            (keyup)="onSelectionChange()" (click)="onRichClick($event)" (paste)="onRichPaste($event)"
-            (contextmenu)="openContextMenu($event)"></div>
+        <div class="grid gap-12 lg-grid-note">
+          <div class="flex flex-col gap-8">
+            <app-block-editor
+              [document]="document"
+              [noteId]="note?.id || null"
+              (documentChange)="onDocumentChange($event)"
+            ></app-block-editor>
+          </div>
+
+          <aside class="space-y-6 rounded-2xl border border-neutral-200 bg-white/80 p-6 shadow-sm surface">
+            <div>
+              <div class="text-xs uppercase tracking-wide text-neutral-400">Properties</div>
+              <div class="mt-4 space-y-4">
+                <div
+                  *ngFor="let property of properties"
+                  class="property-card rounded-xl border border-neutral-200 bg-white px-3 py-2 shadow-sm transition hover:border-sky-200 surface-card"
+                >
+                  <div class="flex items-center justify-between text-xs text-neutral-400">
+                    <input
+                      class="w-full bg-transparent text-sm font-medium text-neutral-700 outline-none"
+                      [(ngModel)]="property.name"
+                      (ngModelChange)="onPropertyChange(property)"
+                    />
+                    <button
+                      type="button"
+                      class="opacity-0 pl-2 text-neutral-300 transition hover-controls hover:text-red-500"
+                      (click)="removeProperty(property)"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <div class="mt-2 flex gap-3">
+                    <select
+                      class="rounded-md border border-neutral-200 bg-neutral-50 px-2 py-1 text-xs text-neutral-600 focus:border-sky-300 focus:outline-none"
+                      [(ngModel)]="property.type"
+                      (ngModelChange)="changePropertyType(property, $event)"
+                    >
+                      <option value="text">Text</option>
+                      <option value="date">Date</option>
+                      <option value="select">Select</option>
+                      <option value="multi-select">Multi-select</option>
+                      <option value="number">Number</option>
+                      <option value="checkbox">Checkbox</option>
+                    </select>
+                    <ng-container [ngSwitch]="property.type">
+                      <input
+                        *ngSwitchCase="'date'"
+                        type="date"
+                        class="flex-1 rounded-md border border-neutral-200 px-2 py-1 text-sm text-neutral-600 focus:border-sky-300 focus:outline-none"
+                        [(ngModel)]="property.value"
+                        (ngModelChange)="onPropertyChange(property)"
+                      />
+                      <input
+                        *ngSwitchCase="'number'"
+                        type="number"
+                        class="flex-1 rounded-md border border-neutral-200 px-2 py-1 text-sm text-neutral-600 focus:border-sky-300 focus:outline-none"
+                        [(ngModel)]="property.value"
+                        (ngModelChange)="onPropertyChange(property)"
+                      />
+                      <label *ngSwitchCase="'checkbox'" class="flex items-center gap-2 text-sm text-neutral-600">
+                        <input
+                          type="checkbox"
+                          class="h-4 w-4 rounded border-neutral-300 text-sky-500 focus:ring-sky-500"
+                          [(ngModel)]="property.value"
+                          (ngModelChange)="onPropertyChange(property)"
+                        />
+                        Checked
+                      </label>
+                      <input
+                        *ngSwitchDefault
+                        class="flex-1 rounded-md border border-neutral-200 px-2 py-1 text-sm text-neutral-600 focus:border-sky-300 focus:outline-none"
+                        [(ngModel)]="property.value"
+                        (ngModelChange)="onPropertyChange(property)"
+                      />
+                    </ng-container>
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                class="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-neutral-300 bg-white/70 px-3 py-2 text-sm text-neutral-500 transition hover:border-sky-300 hover:text-sky-600"
+                (click)="addProperty()"
+              >
+                + Add property
+              </button>
+            </div>
+
+            <div class="rounded-xl border border-neutral-200 bg-white p-4 text-sm text-neutral-600 shadow-sm surface-card">
+              <div class="mb-3 text-xs uppercase tracking-wide text-neutral-400">Export</div>
+              <p class="text-xs text-neutral-400">
+                Export to Markdown and database views will be available in the next milestone.
+              </p>
+            </div>
+          </aside>
         </div>
-        <div *ngIf="codeMode" class="w-full mt-[20px]">
-          <textarea #mdEditor class="w-full h-[calc(100vh-200px)] p-2 font-mono text-sm outline-none focus:outline-none"
-            [placeholder]="editorPlaceholder" [(ngModel)]="note!.content" (ngModelChange)="onContentChange()"
-            (keydown)="keydown($event)" (contextmenu)="openContextMenu($event)"></textarea>
-        </div>
       </div>
-
-      <!-- Custom context menu -->
-      <div #cmRef *ngIf="cmOpen" class="fixed z-50 bg-white shadow text-sm"
-        [ngStyle]="{ left: cmX + 'px', top: cmY + 'px' }">
-        <div class="px-3 py-1 hover:bg-gray-100 cursor-pointer" (click)="cmHeading(1)">Heading 1</div>
-        <div class="px-3 py-1 hover:bg-gray-100 cursor-pointer" (click)="cmHeading(2)">Heading 2</div>
-        <div class="px-3 py-1 hover:bg-gray-100 cursor-pointer" (click)="cmHeading(3)">Heading 3</div>
-        <div class="px-3 py-1 hover:bg-gray-100 cursor-pointer" (click)="cmBlockquote()">Blockquote</div>
-        <div class="px-3 py-1 hover:bg-gray-100 cursor-pointer" (click)="cmUl()">Bulleted list</div>
-        <div class="px-3 py-1 hover:bg-gray-100 cursor-pointer" (click)="cmOl()">Numbered list</div>
-        <div class="px-3 py-1 hover:bg-gray-100 cursor-pointer" (click)="cmTask()">Task</div>
-        <div class="px-3 py-1 hover:bg-gray-100 cursor-pointer" (click)="cmInlineCode()">Inline code</div>
-        <div class="px-3 py-1 hover:bg-gray-100 cursor-pointer" (click)="cmCodeBlock()">Code block</div>
-        <div class="px-3 py-1 hover:bg-gray-100 cursor-pointer" (click)="cmLink()">Link</div>
-        <div class="px-3 py-1 hover:bg-gray-100 cursor-pointer" (click)="cmImage()">Image</div>
-        <div class="px-3 py-1 hover:bg-gray-100 cursor-pointer" (click)="closeContextMenu()">Close</div>
-      </div>
-
-      <!-- Selection toolbar -->
-      <div *ngIf="selOpen" class="fixed z-50 bg-white border rounded shadow text-xs flex items-center gap-1 p-1"
-        [ngStyle]="{ left: (selX - 60) + 'px', top: (selY - 36) + 'px' }">
-        <button class="px-1" (click)="exec('bold')"><b>B</b></button>
-        <button class="px-1 italic" (click)="exec('italic')">I</button>
-        <button class="px-1 underline" (click)="exec('underline')">U</button>
-        <button class="px-1 line-through" (click)="exec('strikeThrough')">S</button>
-        <button class="px-1" (click)="applyBlock('blockquote')">❝</button>
-        <button class="px-1" (click)="exec('insertUnorderedList')">•</button>
-        <button class="px-1" (click)="exec('insertOrderedList')">1.</button>
-        <button class="px-1" (click)="openLinkMode()">🔗</button>
-        <label class="px-1 cursor-pointer" title="Text color">A
-          <input type="color" class="hidden" [(ngModel)]="foreColor" (change)="exec('foreColor', foreColor)" />
-        </label>
-        <label class="px-1 cursor-pointer" title="Highlight">🖍
-          <input type="color" class="hidden" [(ngModel)]="backColor" (change)="exec('hiliteColor', backColor)" />
-        </label>
-        <button class="px-1" (click)="cmInlineCode()">`</button>
-        <div *ngIf="linkMode" class="flex items-center gap-1 ms-2">
-          <input class="border rounded px-1 py-0.5 w-[180px]" placeholder="https://..." [(ngModel)]="linkHref" />
-          <button class="px-1 border rounded" (click)="applyLink()">Apply</button>
-        </div>
-      </div>
-
-      <!-- Slash command palette -->
-      <div *ngIf="slashOpen" class="fixed z-50 bg-white border rounded shadow text-sm p-1 w-[200px]"
-        [ngStyle]="{ left: slashX + 'px', top: slashY + 'px' }">
-        <div class="px-2 py-1 hover:bg-gray-100 cursor-pointer" (click)="slashPick('h1')">Heading 1</div>
-        <div class="px-2 py-1 hover:bg-gray-100 cursor-pointer" (click)="slashPick('h2')">Heading 2</div>
-        <div class="px-2 py-1 hover:bg-gray-100 cursor-pointer" (click)="slashPick('quote')">Quote</div>
-        <div class="px-2 py-1 hover:bg-gray-100 cursor-pointer" (click)="slashPick('ul')">Bulleted list</div>
-        <div class="px-2 py-1 hover:bg-gray-100 cursor-pointer" (click)="slashPick('ol')">Numbered list</div>
-        <div class="px-2 py-1 hover:bg-gray-100 cursor-pointer" (click)="slashPick('task')">Task</div>
-        <div class="px-2 py-1 hover:bg-gray-100 cursor-pointer" (click)="slashPick('code')">Code block</div>
-        <div class="px-2 py-1 hover:bg-gray-100 cursor-pointer" (click)="slashPick('table')">Table</div>
-        <div class="px-2 py-1 hover:bg-gray-100 cursor-pointer" (click)="slashPick('mention')">Mention</div>
-        <div class="px-2 py-1 hover:bg-gray-100 cursor-pointer" (click)="slashPick('equation')">Equation (LaTeX)</div>
-        <div class="px-2 py-1 hover:bg-gray-100 cursor-pointer" (click)="slashPick('color')">Text color</div>
-        <div class="px-2 py-1 hover:bg-gray-100 cursor-pointer" (click)="slashPick('highlight')">Highlight</div>
-      </div>
-
     </div>
-    <div class="holes hole-top"></div>
-    <div class="holes hole-middle"></div>
-    <div class="holes hole-bottom"></div>
-
   </div>
-
 </div>
+
+
+
+
+

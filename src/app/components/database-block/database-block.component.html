@@ -1,0 +1,154 @@
+<div class="db-shell surface-card">
+  <div class="db-toolbar">
+    <div class="db-left">
+      <button type="button" class="db-btn" (click)="refresh()" [disabled]="loading">Refresh</button>
+      <button type="button" class="db-btn" (click)="addColumn()" [disabled]="loading || !block?.databaseId">Add Column</button>
+      <button type="button" class="db-btn" (click)="addRow()" [disabled]="loading || !block?.databaseId">Add Row</button>
+    </div>
+    <div class="db-right">
+      <input
+        type="search"
+        class="db-filter"
+        placeholder="Filter…"
+        [(ngModel)]="filterTerm"
+        [disabled]="loading"
+      />
+      <div class="db-view-toggle">
+        <button type="button" class="db-btn" [class.active]="view === 'table'" (click)="toggleView('table')">Table</button>
+        <button type="button" class="db-btn" [class.active]="view === 'list'" (click)="toggleView('list')">List</button>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="loading" class="db-status">Loading database…</div>
+  <div *ngIf="!loading && error" class="db-status error">{{ error }}</div>
+  <div *ngIf="!loading && !error && !block?.databaseId" class="db-status">Database initializing…</div>
+
+  <ng-container *ngIf="!loading && !error && block?.databaseId && database as db">
+    <div *ngIf="view === 'table'" class="db-table-wrap">
+      <table class="db-table">
+        <thead>
+          <tr>
+            <th *ngFor="let column of columns; trackBy: trackColumn">
+              <div class="db-column-header">
+                <input
+                  class="db-column-name"
+                  [ngModel]="column.name"
+                  (ngModelChange)="column.name = $event"
+                  (blur)="renameColumn(column, column.name)"
+                />
+                <select
+                  class="db-column-type"
+                  [ngModel]="column.type"
+                  (ngModelChange)="updateColumnType(column, $event)"
+                >
+                  <option value="text">Text</option>
+                  <option value="number">Number</option>
+                  <option value="date">Date</option>
+                  <option value="checkbox">Checkbox</option>
+                  <option value="select">Select</option>
+                  <option value="multi-select">Multi-select</option>
+                </select>
+                <button type="button" class="db-icon-btn" (click)="deleteColumn(column)" title="Delete column">✕</button>
+              </div>
+              <button type="button" class="db-sort" (click)="toggleSort(column)">
+                Sort {{ sortColumnId === column.id ? (sortDirection === 'asc' ? '↑' : '↓') : '' }}
+              </button>
+            </th>
+            <th class="db-actions-col"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let row of visibleRows; trackBy: trackRow">
+            <td *ngFor="let column of columns; trackBy: trackColumn">
+              <ng-container [ngSwitch]="column.type">
+                <input
+                  *ngSwitchCase="'number'"
+                  type="number"
+                  class="db-cell-input"
+                  [value]="row.values?.[column.id] ?? ''"
+                  (change)="updateCell(row, column, $any($event.target).value)"
+                />
+                <input
+                  *ngSwitchCase="'date'"
+                  type="date"
+                  class="db-cell-input"
+                  [value]="row.values?.[column.id] ?? ''"
+                  (change)="updateCell(row, column, $any($event.target).value)"
+                />
+                <label *ngSwitchCase="'checkbox'" class="db-checkbox">
+                  <input
+                    type="checkbox"
+                    [checked]="!!row.values?.[column.id]"
+                    (change)="updateCell(row, column, $any($event.target).checked)"
+                  />
+                  <span>Done</span>
+                </label>
+                <input
+                  *ngSwitchDefault
+                  type="text"
+                  class="db-cell-input"
+                  [value]="row.values?.[column.id] ?? ''"
+                  (change)="updateCell(row, column, $any($event.target).value)"
+                />
+              </ng-container>
+            </td>
+            <td class="db-actions-col">
+              <button type="button" class="db-icon-btn danger" (click)="deleteRow(row)" title="Delete row">✕</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <div *ngIf="visibleRows.length === 0" class="db-status subtle">No rows match the filters.</div>
+    </div>
+
+    <div *ngIf="view === 'list'" class="db-list">
+      <div *ngFor="let row of visibleRows; trackBy: trackRow" class="db-card">
+        <div class="db-card-header">
+          <span class="db-card-title">{{ row.id | slice:0:8 }}</span>
+          <button type="button" class="db-icon-btn danger" (click)="deleteRow(row)" title="Delete row">✕</button>
+        </div>
+        <div class="db-card-body" *ngIf="columns.length; else noColumns">
+          <div *ngFor="let column of columns; trackBy: trackColumn" class="db-card-field">
+            <div class="db-card-label">{{ column.name }}</div>
+            <ng-container [ngSwitch]="column.type">
+              <label *ngSwitchCase="'checkbox'" class="db-checkbox">
+                <input
+                  type="checkbox"
+                  [checked]="!!row.values?.[column.id]"
+                  (change)="updateCell(row, column, $any($event.target).checked)"
+                />
+                <span>Done</span>
+              </label>
+              <input
+                *ngSwitchCase="'date'"
+                type="date"
+                class="db-cell-input"
+                [value]="row.values?.[column.id] ?? ''"
+                (change)="updateCell(row, column, $any($event.target).value)"
+              />
+              <input
+                *ngSwitchCase="'number'"
+                type="number"
+                class="db-cell-input"
+                [value]="row.values?.[column.id] ?? ''"
+                (change)="updateCell(row, column, $any($event.target).value)"
+              />
+              <input
+                *ngSwitchDefault
+                type="text"
+                class="db-cell-input"
+                [value]="row.values?.[column.id] ?? ''"
+                (change)="updateCell(row, column, $any($event.target).value)"
+              />
+            </ng-container>
+          </div>
+        </div>
+        <ng-template #noColumns>
+          <div class="db-status subtle">Add columns to start capturing data.</div>
+        </ng-template>
+      </div>
+      <div *ngIf="visibleRows.length === 0" class="db-status subtle">No rows yet.</div>
+    </div>
+  </ng-container>
+</div>

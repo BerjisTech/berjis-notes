@@ -1,0 +1,54 @@
+:host {
+  display: block;
+}
+
+button {
+  transition: all 0.18s ease-in-out;
+}
+
+.page-shell {
+  transition: background-color 0.24s ease, color 0.24s ease;
+}
+
+.surface,
+.surface-card {
+  transition: background-color 0.24s ease, border-color 0.24s ease, color 0.24s ease;
+}
+
+.page-shell.dark-mode {
+  background-color: #0f172a;
+  color: #e2e8f0;
+}
+
+.page-shell.dark-mode .surface {
+  background-color: rgba(15, 23, 42, 0.9);
+  border-color: rgba(148, 163, 184, 0.25);
+  color: #e2e8f0;
+}
+
+.page-shell.dark-mode .surface-card {
+  background-color: rgba(30, 41, 59, 0.85);
+  border-color: rgba(148, 163, 184, 0.25);
+  color: #dbeafe;
+}
+
+.page-shell.dark-mode input,
+.page-shell.dark-mode select,
+.page-shell.dark-mode textarea {
+  background-color: rgba(30, 41, 59, 0.6);
+  border-color: rgba(148, 163, 184, 0.35);
+  color: #e2e8f0;
+}
+
+.page-shell.dark-mode input::placeholder {
+  color: rgba(148, 163, 184, 0.7);
+}
+
+.page-shell.dark-mode button {
+  border-color: rgba(148, 163, 184, 0.35);
+}
+
+
+
+
+

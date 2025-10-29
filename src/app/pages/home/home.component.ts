@@ -8,18 +8,21 @@ import { NotesService, Note } from '../../notes.service';
   standalone: true,
   selector: 'app-home',
   imports: [CommonModule, RouterLink],
-  templateUrl: './home.component.html'
+  templateUrl: './home.component.html',
 })
 export class HomePageComponent {
   authed: boolean | null = null;
   recents: Note[] = [];
-  activeNote: Note | null = null;
+  loading = false;
+  error: string | null = null;
 
   constructor(private api: ApiService, private router: Router, private notes: NotesService) {
-    this.init();
+    void this.init();
   }
 
   async init() {
+    this.loading = true;
+    this.error = null;
     try {
       const res = await this.api.ensureAuth();
       this.authed = !!res?.data?.valid;
@@ -27,14 +30,21 @@ export class HomePageComponent {
         this.recents = await this.notes.list(['active']);
       } else {
         this.recents = [];
-        this.activeNote = null;
       }
-    } catch {
+    } catch (err: any) {
       this.authed = false;
+      this.error = err?.message || 'Unable to load account details.';
+    } finally {
+      this.loading = false;
     }
   }
 
-  select(n: Note) {
-    this.router.navigate(['/note', n.id]);
-   }
+  createNote() {
+    this.router.navigate(['/note', 'new']);
+  }
+
+  select(note: Note) {
+    this.router.navigate(['/note', note.id]);
+  }
 }
+

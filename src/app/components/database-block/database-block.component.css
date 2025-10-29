@@ -1,0 +1,240 @@
+.db-shell {
+  border-radius: 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.db-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.db-btn {
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  background: rgba(248, 250, 252, 0.9);
+  color: #0f172a;
+  padding: 0.35rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.db-btn:hover:not(:disabled) {
+  border-color: rgba(56, 189, 248, 0.6);
+  color: #0284c7;
+}
+
+.db-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.db-btn.active {
+  border-color: rgba(56, 189, 248, 0.8);
+  background: rgba(56, 189, 248, 0.12);
+  color: #0369a1;
+}
+
+.db-filter {
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 0.5rem;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.85rem;
+}
+
+.db-left,
+.db-right {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.db-view-toggle {
+  display: inline-flex;
+  gap: 0.25rem;
+}
+
+.db-status {
+  padding: 0.85rem;
+  border-radius: 0.75rem;
+  background: rgba(226, 232, 240, 0.45);
+  color: #1e293b;
+  font-size: 0.9rem;
+}
+
+.db-status.error {
+  background: rgba(248, 113, 113, 0.18);
+  color: #b91c1c;
+}
+
+.db-status.subtle {
+  background: rgba(148, 163, 184, 0.1);
+  color: #475569;
+}
+
+.db-table-wrap {
+  overflow-x: auto;
+}
+
+.db-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 640px;
+}
+
+.db-table thead {
+  background: rgba(226, 232, 240, 0.4);
+}
+
+.db-table th,
+.db-table td {
+  border: 1px solid rgba(226, 232, 240, 0.7);
+  padding: 0.5rem;
+  vertical-align: top;
+}
+
+.db-column-header {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.25rem;
+}
+
+.db-column-name {
+  flex: 1;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 0.35rem;
+  padding: 0.3rem 0.45rem;
+  font-size: 0.85rem;
+}
+
+.db-column-type {
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 0.35rem;
+  padding: 0.25rem 0.35rem;
+  font-size: 0.78rem;
+}
+
+.db-icon-btn {
+  border: none;
+  background: transparent;
+  font-size: 0.85rem;
+  color: rgba(100, 116, 139, 0.8);
+  cursor: pointer;
+  padding: 0.2rem;
+  transition: color 0.15s ease;
+}
+
+.db-icon-btn:hover {
+  color: #0f172a;
+}
+
+.db-icon-btn.danger {
+  color: rgba(248, 113, 113, 0.9);
+}
+
+.db-icon-btn.danger:hover {
+  color: #b91c1c;
+}
+
+.db-sort {
+  border: none;
+  background: transparent;
+  font-size: 0.75rem;
+  color: rgba(100, 116, 139, 0.9);
+  cursor: pointer;
+  padding: 0;
+}
+
+.db-cell-input {
+  width: 100%;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 0.35rem;
+  padding: 0.25rem 0.4rem;
+  font-size: 0.85rem;
+  background: white;
+}
+
+.db-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  color: #475569;
+}
+
+.db-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.db-card {
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 0.85rem;
+  padding: 0.75rem;
+  background: rgba(248, 250, 252, 0.9);
+}
+
+.db-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.db-card-title {
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.db-card-body {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.db-card-field {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.db-card-label {
+  font-size: 0.8rem;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.db-actions-col {
+  width: 3rem;
+  text-align: center;
+}
+
+:host-context(.dark-mode) .db-shell {
+  background: rgba(15, 23, 42, 0.65);
+  border-color: rgba(148, 163, 184, 0.3);
+  color: #e2e8f0;
+}
+
+:host-context(.dark-mode) .db-btn {
+  border-color: rgba(148, 163, 184, 0.35);
+  background: rgba(30, 41, 59, 0.85);
+  color: #e2e8f0;
+}
+
+:host-context(.dark-mode) .db-table th,
+:host-context(.dark-mode) .db-table td {
+  border-color: rgba(71, 85, 105, 0.6);
+}
+
+:host-context(.dark-mode) .db-cell-input {
+  background: rgba(15, 23, 42, 0.9);
+  color: #e2e8f0;
+  border-color: rgba(71, 85, 105, 0.7);
+}

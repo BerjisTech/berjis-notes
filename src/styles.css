@@ -1,108 +1,155 @@
-@import url(https://fonts.googleapis.com/css?family=Indie+Flower);
+@import url(https://fonts.googleapis.com/css?family=Inter:300,400,500,600,700);
 @import "tailwindcss";
-@custom-variant dark (&:where(.dark, .dark *));
 
-* {
-    line-height: 25px !important;
-}
-
-.paper {
-    width: 100%;
-    height: 98vh;
-    position: relative;
-    display: block;
-    background: rgba(255, 255, 255, 0.9);
-    box-shadow: 0px 0px 5px 0px #888;
-}
-
-.paper::before {
-    content: '';
-    position: absolute;
-    left: 45px;
-    height: 100%;
-    width: 2px;
-    background: rgba(255, 0, 0, 0.4);
-}
-
-.lines {
-    padding-left: 50px;
-    height: 100%;
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: start;
-    justify-content: start;
-    background-image: repeating-linear-gradient(white 0px, white 24px, steelblue 25px);
-}
-
-.text {
-    width: 100%;
-    top: 65px;
-    left: 55px;
-    bottom: 10px;
-    right: 10px;
-    font-family: 'Indie Flower';
-    overflow-x: none;
-    overflow-y: auto;
-    outline: none;
-}
-
-.holes {
-    position: absolute;
-    left: 10px;
-    height: 25px;
-    width: 25px;
-    background: lightgoldenrodyellow;
-    border-radius: 50%;
-    box-shadow: inset 0px 0px 2px 0px #888;
-}
-
-.hole-top {
-    top: 10%;
-}
-
-.hole-middle {
-    top: 50%;
-}
-
-.hole-bottom {
-    bottom: 10%;
-}
-
-pre::-webkit-scrollbar {
-    background-color: #3a3a3a;
-}
-
-pre::-webkit-scrollbar-thumb {
-    background: #f2dede;
-    border-radius: 1px;
+body {
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background-color: #f8fafc;
+    color: #0f172a;
 }
 
 pre {
+    background: #0f172a;
+    color: #e2e8f0;
+    padding: 1rem;
+    border-radius: 0.75rem;
     overflow-x: auto;
-    background: #3a3a3a;
-    color: #f2dede;
-    padding: 20px;
-    -webkit-box-shadow: 0 0 8px 0 rgba(0, 0, 0, 0.75);
-    -moz-box-shadow: 0 0 8px 0 rgba(193, 66, 66, 0.5);
-    box-shadow: 0 0 8px 0 rgba(193, 66, 66, 0.5);
+}
 
-    code {
-        background-color: transparent !important;
-        border-radius: 0px !important;
-        padding: 0 !important;
-        color: #f2dede !important;
-    }
+pre code {
+    background: transparent;
+    color: inherit;
+    padding: 0;
 }
 
 code {
-    background-color: #f4f4f4;
-    /* Light gray background */
-    border-radius: 10px;
-    /* Specific styles for the code within the pre tag, if needed */
-    /* For example, you might want to adjust padding or color slightly */
-    padding: 0 10px;
-    /* Remove extra padding if pre already handles it */
-    color: #680303;
-    /* Slightly lighter color for the code itself */
+    background-color: rgba(15, 23, 42, 0.08);
+    border-radius: 0.4rem;
+    padding: 0.1rem 0.4rem;
 }
+
+::selection {
+    background-color: rgba(56, 189, 248, 0.3);
+}
+
+/* Block editor styles */
+.toolbar-btn {
+  border-radius: 0.375rem;
+  border: 1px solid #e5e7eb;
+  background-color: rgba(255, 255, 255, 0.95);
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: #4b5563;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.toolbar-btn:hover {
+  border-color: #38bdf8;
+  color: #0ea5e9;
+}
+
+.toolbar-btn:focus-visible {
+  outline: 2px solid rgba(14, 165, 233, 0.35);
+  outline-offset: 2px;
+}
+
+.editor-toolbar {
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.hover-controls {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.block-row:hover .hover-controls {
+  opacity: 1;
+}
+
+.block-row {
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+[contenteditable='true']:focus {
+  outline: none;
+}
+
+.drag-over {
+  border-color: #38bdf8 !important;
+  background-color: rgba(56, 189, 248, 0.12) !important;
+}
+
+textarea {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+}
+
+.dark-mode .editor-toolbar {
+  border-color: rgba(148, 163, 184, 0.4);
+  background-color: rgba(30, 41, 59, 0.7);
+}
+
+.dark-mode .toolbar-btn {
+  border-color: rgba(100, 116, 139, 0.55);
+  background-color: rgba(51, 65, 85, 0.65);
+  color: #e2e8f0;
+}
+
+.dark-mode .toolbar-btn:hover {
+  border-color: rgba(56, 189, 248, 0.7);
+  color: #38bdf8;
+}
+
+.dark-mode .toolbar-btn:focus-visible {
+  outline: 2px solid rgba(56, 189, 248, 0.4);
+}
+
+.dark-mode .block-row {
+  background-color: rgba(30, 41, 59, 0.7) !important;
+  border-color: rgba(71, 85, 105, 0.45) !important;
+}
+
+.dark-mode .drag-over {
+  border-color: rgba(56, 189, 248, 0.7) !important;
+  background-color: rgba(56, 189, 248, 0.2) !important;
+}
+
+.dark-mode textarea {
+  background-color: rgba(15, 23, 42, 0.75);
+  color: #e2e8f0;
+  border-color: rgba(71, 85, 105, 0.45);
+}
+
+/* Note property controls */
+.property-card .hover-controls {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.property-card:hover .hover-controls {
+  opacity: 1;
+}
+
+.surface {
+  backdrop-filter: blur(24px);
+}
+
+.surface-card {
+  backdrop-filter: blur(12px);
+  background-color: rgba(255, 255, 255, 0.9);
+}
+
+.dark-mode .surface {
+  background-color: rgba(15, 23, 42, 0.78);
+}
+
+.dark-mode .surface-card {
+  background-color: rgba(30, 41, 59, 0.82);
+  border-color: rgba(71, 85, 105, 0.45);
+}
+
+@media (min-width: 1024px) {
+  .lg-grid-note { grid-template-columns: minmax(0, 3fr) minmax(0, 1.2fr); }
+}
+
+

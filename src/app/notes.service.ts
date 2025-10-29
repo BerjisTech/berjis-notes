@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
+import { BookmarkPreview, NoteDatabase, NoteDatabaseColumn, NoteDatabaseRow } from './editor/editor.types';
 
 export type NoteStatus = 'active' | 'archived' | 'deleted';
 
@@ -20,12 +21,20 @@ export interface Note {
   updatedAt: string; // ISO
 }
 
+export interface NoteSearchResult {
+  id: string;
+  title: string;
+  snippet: string;
+  updatedAt: string;
+}
+
 const STORAGE_KEY = 'berjis-notes';
 const API_BASE = 'https://notes-api.berjis.tech';
 
 @Injectable({ providedIn: 'root' })
 export class NotesService {
   private cache: Record<string, Note> = {};
+  private databaseCache = new Map<string, NoteDatabase>();
   private preferRemote = true;
   // Sync status
   syncMode: 'remote' | 'local' = 'remote';
@@ -167,9 +176,22 @@ export class NotesService {
   }
   async softDelete(id: string) {
     if (this.preferRemote) {
-      try { this.beginSave(); await firstValueFrom(this.http.delete(`${API_BASE}/v1/notes/${id}`, { withCredentials: true })); this.endSave(); } catch (e) { this.endSave(e); this.switchToLocal(e); }
+      try {
+        this.beginSave();
+        await firstValueFrom(this.http.delete(`${API_BASE}/v1/notes/${id}`, { withCredentials: true }));
+        this.endSave();
+      } catch (e) {
+        this.endSave(e);
+        this.switchToLocal(e);
+      }
     }
-    const n = this.cache[id]; if (n) { n.status = 'deleted'; n.updatedAt = this.now(); this.persist(); }
+    const n = this.cache[id];
+    if (n) {
+      n.status = 'deleted';
+      n.updatedAt = this.now();
+      this.persist();
+    }
+    this.evictDatabasesForNote(id);
   }
 
   private MIGRATION_FLAG = 'berjis-notes-migrated-v1';
@@ -226,12 +248,206 @@ export class NotesService {
   private switchToLocal(e?: any) {
     this.preferRemote = false; this.syncMode = 'local'; this.lastError = (e?.message || 'offline, saving locally');
   }
-  purge(id: string) { delete this.cache[id]; this.persist(); }
+  purge(id: string) {
+    delete this.cache[id];
+    this.evictDatabasesForNote(id);
+    this.persist();
+  }
 
-  // Strip HTML and Markdown syntax to detect real text content
-  private stripFormatting(s: string): string {
+  async uploadImage(noteId: string, blockId: string, file: File) {
+    const form = new FormData();
+    form.append('file', file, file.name);
+    if (noteId) form.append('noteId', noteId);
+    if (blockId) form.append('blockId', blockId);
+    const res = await firstValueFrom(this.http.post<any>(`${API_BASE}/v1/assets/images`, form, { withCredentials: true }));
+    return res?.data as { id: string; url: string; fileName: string; mimeType: string; size: number };
+  }
+
+  async previewBookmark(url: string): Promise<BookmarkPreview> {
+    const res = await firstValueFrom(this.http.post<any>(`${API_BASE}/v1/bookmarks/preview`, { url }, { withCredentials: true }));
+    return res?.data as BookmarkPreview;
+  }
+
+  async createDatabase(noteId: string, options?: { title?: string; view?: 'table' | 'list'; filters?: any; sorts?: any }): Promise<NoteDatabase> {
+    const res = await firstValueFrom(this.http.post<any>(`${API_BASE}/v1/databases`, {
+      noteId,
+      title: options?.title,
+      view: options?.view,
+      filters: options?.filters,
+      sorts: options?.sorts,
+    }, { withCredentials: true }));
+    return this.adaptDatabase(res?.data);
+  }
+
+  async getDatabase(id: string, force = false): Promise<NoteDatabase | undefined> {
+    if (!force && this.databaseCache.has(id)) return this.databaseCache.get(id);
     try {
-      let t = s || '';
+      const res = await firstValueFrom(this.http.get<any>(`${API_BASE}/v1/databases/${id}`, { withCredentials: true }));
+      if (!res?.data) {
+        this.databaseCache.delete(id);
+        return undefined;
+      }
+      return this.adaptDatabase(res.data);
+    } catch (err) {
+      this.databaseCache.delete(id);
+      throw err;
+    }
+  }
+
+  async updateDatabase(id: string, patch: { title?: string; view?: 'table' | 'list'; filters?: any; sorts?: any }): Promise<NoteDatabase> {
+    const res = await firstValueFrom(this.http.patch<any>(`${API_BASE}/v1/databases/${id}`, patch, { withCredentials: true }));
+    return this.adaptDatabase(res?.data);
+  }
+
+  async createDatabaseColumn(databaseId: string, input: { name: string; type: string; position?: number; config?: any }): Promise<NoteDatabase> {
+    const res = await firstValueFrom(this.http.post<any>(`${API_BASE}/v1/databases/${databaseId}/columns`, input, { withCredentials: true }));
+    return this.adaptDatabase(res?.data);
+  }
+
+  async updateDatabaseColumn(databaseId: string, columnId: string, patch: { name?: string; type?: string; position?: number; config?: any }): Promise<NoteDatabase> {
+    const res = await firstValueFrom(this.http.patch<any>(`${API_BASE}/v1/databases/${databaseId}/columns/${columnId}`, patch, { withCredentials: true }));
+    return this.adaptDatabase(res?.data);
+  }
+
+  async deleteDatabaseColumn(databaseId: string, columnId: string): Promise<NoteDatabase> {
+    const res = await firstValueFrom(this.http.delete<any>(`${API_BASE}/v1/databases/${databaseId}/columns/${columnId}`, { withCredentials: true }));
+    return this.adaptDatabase(res?.data);
+  }
+
+  async createDatabaseRow(databaseId: string, input: { position?: number; values?: Record<string, any> }): Promise<NoteDatabase> {
+    const res = await firstValueFrom(this.http.post<any>(`${API_BASE}/v1/databases/${databaseId}/rows`, input, { withCredentials: true }));
+    return this.adaptDatabase(res?.data);
+  }
+
+  async updateDatabaseRow(databaseId: string, rowId: string, input: { position?: number; values?: Record<string, any> }): Promise<NoteDatabase> {
+    const res = await firstValueFrom(this.http.patch<any>(`${API_BASE}/v1/databases/${databaseId}/rows/${rowId}`, input, { withCredentials: true }));
+    return this.adaptDatabase(res?.data);
+  }
+
+  async deleteDatabaseRow(databaseId: string, rowId: string): Promise<NoteDatabase> {
+    const res = await firstValueFrom(this.http.delete<any>(`${API_BASE}/v1/databases/${databaseId}/rows/${rowId}`, { withCredentials: true }));
+    return this.adaptDatabase(res?.data);
+  }
+
+  async search(query: string): Promise<NoteSearchResult[]> {
+    const trimmed = query.trim();
+    if (!trimmed) return [];
+    if (this.preferRemote) {
+      try {
+        const res = await firstValueFrom(this.http.get<any>(`${API_BASE}/v1/search`, { params: { q: trimmed }, withCredentials: true }));
+        if (Array.isArray(res?.data)) {
+          return res.data.map((r: any) => ({
+            id: r.id,
+            title: r.title || '',
+            snippet: r.snippet || '',
+            updatedAt: r.updatedAt,
+          }) as NoteSearchResult);
+        }
+      } catch (e) {
+        this.switchToLocal(e);
+      }
+    }
+    const fallback = Object.values(this.cache)
+      .filter(n => {
+        const haystack = `${n.title || ''} ${n.content || ''}`.toLowerCase();
+        return haystack.includes(trimmed.toLowerCase());
+      })
+      .slice(0, 20)
+      .map(n => ({
+        id: n.id,
+        title: n.title || 'Untitled',
+        snippet: (n.content || '').slice(0, 160),
+        updatedAt: n.updatedAt,
+      }));
+    return fallback;
+  }
+
+  async export(noteId: string): Promise<Blob> {
+    const res = await firstValueFrom(this.http.get(`${API_BASE}/v1/notes/${noteId}/export`, {
+      withCredentials: true,
+      responseType: 'blob' as const,
+    }));
+    return res;
+  }
+
+  private evictDatabasesForNote(noteId: string) {
+    for (const [databaseId, database] of this.databaseCache.entries()) {
+      if (database.noteId === noteId) {
+        this.databaseCache.delete(databaseId);
+      }
+    }
+  }
+
+  private adaptDatabase(payload: any): NoteDatabase {
+    if (!payload) {
+      throw new Error('Invalid database payload');
+    }
+    const view = payload.view === 'list' ? 'list' : 'table';
+    const columns: NoteDatabaseColumn[] = Array.isArray(payload.columns)
+      ? payload.columns.map((c: any) => ({
+          id: c.id,
+          databaseId: c.databaseId,
+          name: c.name,
+          type: c.type,
+          position: c.position ?? 0,
+          config: this.parseJSONOrUndefined(c.config),
+        }))
+      : [];
+    const rows: NoteDatabaseRow[] = Array.isArray(payload.rows)
+      ? payload.rows.map((r: any) => ({
+          id: r.id,
+          databaseId: r.databaseId,
+          position: r.position ?? 0,
+          values: r.values || {},
+        }))
+      : [];
+    const db: NoteDatabase = {
+      id: payload.id,
+      noteId: payload.noteId,
+      title: payload.title ?? null,
+      view,
+      filters: this.parseJSONOrUndefined(payload.filters),
+      sorts: this.parseJSONOrUndefined(payload.sorts),
+      columns,
+      rows,
+    };
+    this.databaseCache.set(db.id, db);
+    return db;
+  }
+
+  private parseJSONOrUndefined(value: any) {
+    if (value === null || value === undefined) return undefined;
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (!trimmed || trimmed === 'null') return undefined;
+      try { return JSON.parse(trimmed); } catch { return trimmed; }
+    }
+    return value;
+  }
+
+  // Strip block document / HTML / Markdown formatting so we can detect meaningful text content.
+  private stripFormatting(raw: string): string {
+    if (!raw) return '';
+    const json = this.tryParseEditorDocument(raw);
+    if (json) {
+      const text = json.blocks
+        .map((block: any) => {
+          if (block.type === 'code') return block.code || '';
+          if (block.type === 'todo') return `${block.checked ? '[x]' : '[ ]'} ${this.stripHtml(block.html || '')}`;
+          if (block.type === 'divider') return '';
+          if (block.type === 'image') return block.caption || '';
+          if (block.type === 'bookmark') {
+            if (block.bookmark?.title) return block.bookmark.title;
+            return block.caption || block.url || '';
+          }
+          if (block.type === 'database') return '[database]';
+          return this.stripHtml(block.html || '');
+        })
+        .join(' ');
+      return text.trim();
+    }
+    try {
+      let t = raw || '';
       t = t.replace(/```[\s\S]*?```/g, ' '); // fenced code
       t = t.replace(/`[^`]*`/g, ' '); // inline code
       t = t.replace(/<[^>]*>/g, ' '); // html tags
@@ -245,6 +461,23 @@ export class NotesService {
       t = t.replace(/^#{1,6}\s+/gm, ''); // headings
       t = t.replace(/\s+/g, ' ');
       return t.trim();
-    } catch { return (s || '').trim(); }
+    } catch {
+      return (raw || '').trim();
+    }
+  }
+
+  private tryParseEditorDocument(raw: string): { blocks: any[] } | null {
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed && Array.isArray(parsed.blocks)) return parsed as { blocks: any[] };
+    } catch {
+      return null;
+    }
+    return null;
+  }
+
+  private stripHtml(html: string): string {
+    if (!html) return '';
+    return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
   }
 }
