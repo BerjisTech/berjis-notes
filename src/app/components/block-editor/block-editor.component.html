@@ -1,5 +1,6 @@
 <div class="flex flex-col gap-6">
-  <div class="editor-toolbar flex flex-wrap items-center gap-2 rounded-lg border border-neutral-200 bg-white/70 p-2 backdrop-blur">
+  <div
+    class="editor-toolbar flex flex-wrap items-center gap-2 rounded-lg border border-slate-800/70 bg-slate-900/70 p-3 shadow-inner shadow-slate-950/40 backdrop-blur">
     <button type="button" class="toolbar-btn font-semibold" (click)="toggleFormat('bold')">B</button>
     <button type="button" class="toolbar-btn italic" (click)="toggleFormat('italic')">I</button>
     <button type="button" class="toolbar-btn underline" (click)="toggleFormat('underline')">U</button>
@@ -8,308 +9,216 @@
     <button type="button" class="toolbar-btn" (click)="toggleFormat('insertOrderedList')">1. List</button>
     <button type="button" class="toolbar-btn" (click)="toggleFormat('formatBlock', 'blockquote')">❝ Quote</button>
     <button type="button" class="toolbar-btn" (click)="toggleFormat('createLink')">🔗 Link</button>
-    <span class="ml-auto text-xs text-neutral-500">Type “/” for commands</span>
+    <span class="ml-auto text-xs text-slate-300/80">Type "/" for commands</span>
   </div>
 
-  <div class="flex flex-col gap-3">
-    <div
-      class="block-row relative flex items-stretch gap-3 rounded-lg border border-transparent bg-white/70 px-3 py-2 transition hover:border-neutral-200 hover:bg-white/95"
-      *ngFor="let block of blocks; trackBy: trackBlock"
-      draggable="true"
-      (dragstart)="onDragStart($event, block)"
-      (dragover)="onDragOver($event, block)"
-      (dragleave)="onDragLeave($event)"
-      (drop)="onDrop($event, block)"
-    >
-      <div class="flex items-center gap-2 pt-1">
-        <button
-          type="button"
-          class="opacity-0 transition hover-controls text-neutral-400 hover:text-neutral-700"
-          title="Drag to reorder"
-        >
-          ☰
+  <div class="flex flex-col mx-[30px]">
+    <div class="group block-row relative flex items-stretch gap-3 rounded-xl px-4 py-3 transition"
+      *ngFor="let block of blocks; trackBy: trackBlock" draggable="true" (dragstart)="onDragStart($event, block)"
+      (dragover)="onDragOver($event, block)" (dragleave)="onDragLeave($event)" (drop)="onDrop($event, block)">
+      <div class="relative flex items-center pt-1">
+        <div
+          class="helper_icons absolute left-[-72px] top-0 hidden h-full items-center gap-1 px-2 text-slate-400/80 group-hover:flex bg-parent z-1">
+          <button type="button" class="hover-controls cursor-pointer text-slate-400/80 transition hover:text-red-300"
+            title="Delete block" (click)="removeBlock(block)">
+            ✕
+          </button>
+          <button type="button"
+            class="hover-controls cursor-pointer rounded-full border border-slate-700/70 bg-slate-900/80 px-2 py-1 text-xs font-medium text-slate-200 transition hover:border-amber-300 hover:text-amber-300"
+            title="Click to add block below · Alt+Click for above" (click)="addAdjacentBlock(block, $event)">
+            +
+          </button>
+          <button type="button" class="cursor-move text-slate-400/80 transition hover:text-slate-200"
+            title="Drag to reorder">
+            ☰
+          </button>
+        </div>
+        <button type="button"
+          class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-700/70 bg-slate-900/80 text-xs font-semibold text-slate-200 transition hover:border-amber-300 hover:text-amber-300 focus:outline-none"
+          title="Change block type" [attr.aria-label]="'Block type: ' + getTypeLabel(block.type)"
+          (click)="toggleTypeMenu(block)" data-block-type-trigger>
+          {{ getTypeIcon(block.type) }}
         </button>
-        <select
-          class="hidden md:block rounded-md border border-neutral-200 bg-neutral-50 px-1 py-0.5 text-xs text-neutral-500 focus:border-neutral-400 focus:outline-none"
-          name="block_{{block.type}}"
-          [(ngModel)]="block.type"
-          (ngModelChange)="transformBlock(block, $event)"
-        >
-          <option *ngFor="let option of typeOptions" [ngValue]="option.value">{{ option.label }}</option>
-        </select>
-        <button
-          type="button"
-          class="opacity-0 transition hover-controls text-neutral-300 hover:text-red-500"
-          title="Delete block"
-          (click)="removeBlock(block)"
-        >
-          ✕
-        </button>
+        <div *ngIf="typeMenuOpenId === block.id" data-block-type-menu
+          class="absolute top-8 right-full mr-3 w-52 rounded-xl border border-slate-800/70 bg-slate-900/95 p-3 text-sm text-slate-200 shadow-[0_18px_55px_rgba(8,15,40,0.75)]">
+          <div class="mb-2 text-xs uppercase tracking-[0.3em] text-slate-400/80">Block types</div>
+          <button *ngFor="let option of typeOptions" type="button"
+            class="flex w-full items-center gap-3 rounded-lg border border-transparent px-2 py-1.5 text-left transition hover:bg-amber-400/10"
+            [ngClass]="{
+              'border border-amber-300/70 text-amber-300': option.value === block.type
+            }" (click)="selectType(block, option.value)">
+            <span
+              class="inline-flex h-7 w-7 items-center justify-center rounded border border-slate-700/70 bg-slate-900/80 text-xs font-semibold text-slate-200">
+              {{ option.icon }}
+            </span>
+            <div class="min-w-0">
+              <div class="truncate font-medium text-slate-100">{{ option.label }}</div>
+              <div class="text-[11px] text-slate-400/80 truncate">{{ option.description }}</div>
+            </div>
+          </button>
+        </div>
       </div>
 
       <ng-container [ngSwitch]="block.type">
-        <div *ngSwitchCase="'todo'" class="flex flex-1 items-center gap-3 rounded-md bg-white px-3 py-2 shadow-sm">
-          <input
-            type="checkbox"
-            class="h-5 w-5 rounded border-neutral-300 text-sky-500 focus:ring-sky-500"
-            [checked]="block.checked"
-            (change)="handleCheckboxChange(block, $any($event.target).checked)"
-          />
-          <div
-            #blockContent
-            class="flex-1 min-h-[24px] outline-none text-base text-neutral-700"
-            contenteditable="true"
-            [attr.data-block-id]="block.id"
-            [innerHTML]="block.html"
-            (focus)="handleBlockFocus(block)"
-            (input)="handleInput($event, block)"
-            (keydown)="onKeyDown($event, block)"
-          ></div>
+        <div *ngSwitchCase="'todo'" class="flex flex-1 items-center gap-3 rounded-lg bg-slate-900/60 px-3">
+          <input type="checkbox" class="h-5 w-5 rounded border-slate-700/70 text-blue-400 focus:ring-blue-400"
+            [checked]="block.checked" (change)="handleCheckboxChange(block, $any($event.target).checked)" />
+          <div #blockContent class="flex-1 min-h-[24px] text-base text-slate-100" contenteditable="true"
+            [attr.data-block-id]="block.id" [innerHTML]="block.html" (focus)="handleBlockFocus(block)"
+            (input)="handleInput($event, block)" (keydown)="onKeyDown($event, block)"></div>
         </div>
 
-        <div
-          *ngSwitchCase="'code'"
-          class="w-full rounded-xl border border-neutral-200 bg-neutral-950/95 p-4 text-sm text-neutral-100 shadow-inner"
-        >
-          <textarea
-            class="h-32 w-full resize-y bg-transparent font-mono text-sm text-neutral-100 outline-none"
-            [value]="block.code"
-            (input)="handleInput($event, block)"
-            (keydown)="onKeyDown($event, block)"
-          ></textarea>
-          <div class="mt-2 flex items-center justify-between text-xs text-neutral-400">
+        <div *ngSwitchCase="'code'"
+          class="w-full rounded-xl border border-slate-800/70 bg-slate-950/90 px-4 text-sm text-blue-100 shadow-inner">
+          <textarea class="h-32 w-full resize-y bg-transparent font-mono text-sm text-blue-100 outline-none"
+            [attr.data-block-id]="block.id" [value]="block.code" (input)="handleInput($event, block)"
+            (keydown)="onKeyDown($event, block)"></textarea>
+          <div class="mt-2 flex items-center justify-between text-xs text-slate-400/80">
             <span>{{ block.language || 'plaintext' }}</span>
-            <button type="button" class="rounded border border-neutral-700 px-2 py-1" (click)="transformBlock(block, 'paragraph')">
+            <button type="button"
+              class="rounded border border-slate-700/70 px-2 py-1 text-slate-200 transition hover:border-amber-300 hover:text-amber-300"
+              (click)="transformBlock(block, 'paragraph')">
               Text block
             </button>
           </div>
         </div>
 
-        <div *ngSwitchCase="'divider'" class="flex-1">
-          <div class="h-px w-full bg-gradient-to-r from-transparent via-neutral-300 to-transparent"></div>
+        <div *ngSwitchCase="'divider'" class="flex-1 my-3">
+          <div class="h-px w-full bg-gradient-to-r from-transparent via-slate-600 to-transparent"></div>
         </div>
 
-        <div
-          *ngSwitchCase="'image'"
-          class="flex-1 space-y-3 rounded-xl border border-neutral-200 bg-white p-4 shadow-sm"
-        >
+        <div *ngSwitchCase="'image'" class="flex-1 space-y-3">
           <ng-container *ngIf="block.url; else uploadPlaceholder">
-            <img [src]="block.url" class="max-h-96 w-full rounded-lg object-cover" alt="Uploaded image" />
+            <img [src]="block.url" class="max-h-96 w-full rounded-2xl border border-slate-800/70 object-cover"
+              alt="Uploaded image" />
           </ng-container>
           <ng-template #uploadPlaceholder>
-            <div class="flex h-48 w-full items-center justify-center rounded-lg border border-dashed border-neutral-300 text-neutral-400">
-              Paste an image URL
+            <div
+              class="flex h-48 w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-700/70 bg-slate-900/60 text-slate-400">
+              <span class="font-medium">No image yet</span>
+              <span class="text-xs text-slate-400/80">Upload a file or choose from the gallery</span>
             </div>
           </ng-template>
+          <div class="flex flex-wrap items-center gap-2 text-xs text-slate-300/80">
+            <button type="button"
+              class="inline-flex items-center gap-2 rounded-full border border-slate-700/70 bg-slate-900/70 px-3 py-1.5 text-sm font-medium text-slate-100 transition hover:border-amber-300 hover:text-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
+              (click)="triggerImageUpload(imageUploadInput, block)"
+              [disabled]="uploadingBlocks.has(block.id) || !noteId" data-image-gallery-trigger>
+              {{ uploadingBlocks.has(block.id) ? 'Uploading…' : 'Upload image' }}
+            </button>
+            <button type="button"
+              class="inline-flex items-center gap-2 rounded-full border border-slate-700/70 bg-slate-900/70 px-3 py-1.5 text-sm font-medium text-slate-100 transition hover:border-amber-300 hover:text-amber-300"
+              (click)="toggleImageGallery(block)" data-image-gallery-trigger>
+              Choose from gallery
+            </button>
+            <button *ngIf="block.url" type="button"
+              class="inline-flex items-center gap-2 rounded-full border border-slate-700/70 bg-slate-900/70 px-3 py-1.5 text-sm text-slate-200 transition hover:border-red-400 hover:text-red-300"
+              (click)="clearImage(block)">
+              Remove
+            </button>
+          </div>
+          <input #imageUploadInput type="file" class="hidden" accept="image/*"
+            (change)="onImageFileSelected($event, block)" />
+          <div *ngIf="imageGalleryOpenId === block.id" data-image-gallery
+            class="grid grid-cols-3 gap-3 rounded-2xl border border-slate-800/70 bg-slate-900/80 p-2 shadow-inner shadow-slate-950/40">
+            <button *ngFor="let preset of imageLibrary" type="button"
+              class="group overflow-hidden rounded-xl border border-transparent bg-slate-900/70 shadow-sm transition hover:border-amber-300/70"
+              (click)="setImageFromLibrary(block, preset)">
+              <div class="h-20 w-full overflow-hidden">
+                <img [src]="preset.url" [alt]="preset.label"
+                  class="h-full w-full object-cover transition group-hover:scale-105" />
+              </div>
+              <div class="px-2 py-1 text-xs text-slate-300/80 group-hover:text-amber-300">{{ preset.label }}</div>
+            </button>
+          </div>
           <input
-            class="w-full rounded-md border border-neutral-200 px-3 py-2 text-sm text-neutral-600 focus:border-sky-400 focus:outline-none"
-            name="image_{{block.url}}_url"
-            placeholder="https://example.com/image.jpg"
-            [value]="block.url"
-            (input)="handleInput($event, block)"
-          />
+            class="w-full rounded-md border border-slate-800/70 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 focus:border-amber-300 focus:outline-none"
+            name="image_{{block.id}}_url" placeholder="https://picsum.photos/200" [value]="block.url || ''"
+            (input)="handleInput($event, block)" />
           <input
-            class="w-full rounded-md border border-neutral-200 px-3 py-2 text-xs text-neutral-500 focus:border-sky-400 focus:outline-none"
-            name="image_{{block.url}}_caption"
-            placeholder="Write a caption..."
-            [value]="block.caption"
-            (input)="handleCaptionInput($event, block)"
-          />
+            class="w-full rounded-md border border-slate-800/70 bg-slate-900/70 px-3 py-2 text-xs text-slate-200 focus:border-amber-300 focus:outline-none"
+            name="image_{{block.id}}_caption" placeholder="Write a caption..." [value]="block.caption || ''"
+            (input)="handleCaptionInput($event, block)" />
         </div>
 
-        <div
-          *ngSwitchCase="'bookmark'"
-          class="flex-1 rounded-xl border border-neutral-200 bg-white px-4 py-3 shadow-sm"
-        >
-          <div class="mb-2 text-xs uppercase tracking-wide text-neutral-400">Bookmark</div>
+        <div *ngSwitchCase="'bookmark'"
+          class="flex-1 rounded-2xl border border-slate-800/70 bg-slate-900/70 px-4 py-3 shadow-inner shadow-slate-950/40">
+          <div class="mb-2 text-xs uppercase tracking-[0.3em] text-slate-400/80">Bookmark</div>
           <input
-            class="w-full rounded-md border border-neutral-200 px-3 py-2 text-sm text-neutral-600 focus:border-sky-400 focus:outline-none"
-            placeholder="Paste a link to preview"
-            [value]="block.url"
-            (input)="handleInput($event, block)"
-          />
-          <div class="mt-3 rounded-lg bg-neutral-50 p-3 text-xs text-neutral-500">
+            class="w-full rounded-md border border-slate-800/70 bg-slate-900/60 px-3 py-2 text-sm text-slate-100 focus:border-amber-300 focus:outline-none"
+            placeholder="Paste a link to preview" [value]="block.url" (input)="handleInput($event, block)"
+            (blur)="fetchBookmarkPreview(block)" />
+          <div class="mt-3 rounded-xl border border-slate-800/70 bg-slate-900/60 p-3 text-xs text-slate-300/80">
             Link previews will appear here after backend integration.
           </div>
         </div>
 
-        <div
-          *ngSwitchCase="'quote'"
-          class="relative flex-1 rounded-xl border border-neutral-200 bg-white/80 px-5 py-4 shadow-sm"
-        >
-          <div class="absolute left-3 top-3 text-3xl text-neutral-300">❝</div>
-          <div
-            #blockContent
-            class="min-h-[28px] text-lg italic text-neutral-700 outline-none"
-            contenteditable="true"
-            [attr.data-block-id]="block.id"
-            [innerHTML]="block.html"
-            (focus)="handleBlockFocus(block)"
-            (input)="handleInput($event, block)"
-            (keydown)="onKeyDown($event, block)"
-          ></div>
-        </div>
-
-        <div
-          *ngSwitchCase="'callout-info'; else calloutOther"
-          class="flex flex-1 items-start gap-3 rounded-xl px-4 py-3"
-          [ngClass]="calloutTone(block).className"
-        >
-          <div class="pt-1 text-lg">{{ calloutTone(block).icon }}</div>
-          <div
-            #blockContent
-            class="min-h-[28px] flex-1 text-neutral-800 outline-none"
-            contenteditable="true"
-            [attr.data-block-id]="block.id"
-            [innerHTML]="block.html"
-            (focus)="handleBlockFocus(block)"
-            (input)="handleInput($event, block)"
-            (keydown)="onKeyDown($event, block)"
-          ></div>
-        </div>
-
-        <ng-template #calloutOther>
-          <div
-            class="flex flex-1 items-start gap-3 rounded-xl px-4 py-3"
-            [ngClass]="calloutTone(block).className"
-          >
-            <div class="pt-1 text-lg">{{ calloutTone(block).icon }}</div>
-            <div
-              #blockContent
-              class="min-h-[28px] flex-1 text-neutral-800 outline-none"
-              contenteditable="true"
-              [attr.data-block-id]="block.id"
-              [innerHTML]="block.html"
-              (focus)="handleBlockFocus(block)"
-              (input)="handleInput($event, block)"
-              (keydown)="onKeyDown($event, block)"
-            ></div>
-          </div>
-        </ng-template>
-
         <div *ngSwitchCase="'heading-1'" class="flex-1">
-          <div
-            #blockContent
-            class="min-h-[40px] text-3xl font-semibold tracking-tight text-neutral-900 outline-none"
-            contenteditable="true"
-            [attr.data-block-id]="block.id"
-            [innerHTML]="block.html"
-            (focus)="handleBlockFocus(block)"
-            (input)="handleInput($event, block)"
-            (keydown)="onKeyDown($event, block)"
-          ></div>
+          <div #blockContent class="min-h-[40px] text-3xl font-semibold tracking-tight text-white outline-none"
+            contenteditable="true" [attr.data-block-id]="block.id" [innerHTML]="block.html"
+            (focus)="handleBlockFocus(block)" (input)="handleInput($event, block)" (keydown)="onKeyDown($event, block)">
+          </div>
         </div>
 
         <div *ngSwitchCase="'heading-2'" class="flex-1">
-          <div
-            #blockContent
-            class="min-h-[36px] text-2xl font-semibold text-neutral-900 outline-none"
-            contenteditable="true"
-            [attr.data-block-id]="block.id"
-            [innerHTML]="block.html"
-            (focus)="handleBlockFocus(block)"
-            (input)="handleInput($event, block)"
-            (keydown)="onKeyDown($event, block)"
-          ></div>
+          <div #blockContent class="min-h-[36px] text-2xl font-semibold text-white outline-none" contenteditable="true"
+            [attr.data-block-id]="block.id" [innerHTML]="block.html" (focus)="handleBlockFocus(block)"
+            (input)="handleInput($event, block)" (keydown)="onKeyDown($event, block)"></div>
         </div>
 
         <div *ngSwitchCase="'heading-3'" class="flex-1">
-          <div
-            #blockContent
-            class="min-h-[32px] text-xl font-semibold text-neutral-900 outline-none"
-            contenteditable="true"
-            [attr.data-block-id]="block.id"
-            [innerHTML]="block.html"
-            (focus)="handleBlockFocus(block)"
-            (input)="handleInput($event, block)"
-            (keydown)="onKeyDown($event, block)"
-          ></div>
+          <div #blockContent class="min-h-[32px] text-xl font-semibold text-white outline-none" contenteditable="true"
+            [attr.data-block-id]="block.id" [innerHTML]="block.html" (focus)="handleBlockFocus(block)"
+            (input)="handleInput($event, block)" (keydown)="onKeyDown($event, block)"></div>
         </div>
 
         <div *ngSwitchCase="'bulleted-list'" class="relative flex-1 pl-6">
-          <div class="absolute left-0 top-2 text-lg text-neutral-400">•</div>
-          <div
-            #blockContent
-            class="min-h-[24px] text-base text-neutral-700 outline-none"
-            contenteditable="true"
-            [attr.data-block-id]="block.id"
-            [innerHTML]="block.html"
-            (focus)="handleBlockFocus(block)"
-            (input)="handleInput($event, block)"
-            (keydown)="onKeyDown($event, block)"
-          ></div>
+          <div class="absolute left-0 top-2 text-lg text-slate-400">•</div>
+          <div #blockContent class="min-h-[24px] text-base text-slate-100 outline-none" contenteditable="true"
+            [attr.data-block-id]="block.id" [innerHTML]="block.html" (focus)="handleBlockFocus(block)"
+            (input)="handleInput($event, block)" (keydown)="onKeyDown($event, block)"></div>
         </div>
 
         <div *ngSwitchCase="'numbered-list'" class="relative flex-1 pl-6">
-          <div class="absolute left-0 top-2 text-sm font-medium text-neutral-400">{{ getNumberIndex(block) }}.</div>
-          <div
-            #blockContent
-            class="min-h-[24px] text-base text-neutral-700 outline-none"
-            contenteditable="true"
-            [attr.data-block-id]="block.id"
-            [innerHTML]="block.html"
-            (focus)="handleBlockFocus(block)"
-            (input)="handleInput($event, block)"
-            (keydown)="onKeyDown($event, block)"
-          ></div>
+          <div class="absolute left-0 top-2 text-sm font-medium text-slate-400">{{ getNumberIndex(block) }}.</div>
+          <div #blockContent class="min-h-[24px] text-base text-slate-100 outline-none" contenteditable="true"
+            [attr.data-block-id]="block.id" [innerHTML]="block.html" (focus)="handleBlockFocus(block)"
+            (input)="handleInput($event, block)" (keydown)="onKeyDown($event, block)"></div>
         </div>
 
-        <app-database-block
-          *ngSwitchCase="'database'"
-          [block]="block"
-          [noteId]="noteId"
-          (viewChange)="onDatabaseViewChange(block, $event)"
-          (mutate)="onDatabaseMutated()"
-        ></app-database-block>
+        <app-database-block *ngSwitchCase="'database'"
+          class="rounded-2xl border border-slate-800/70 bg-slate-900/70 p-3" [block]="block" [noteId]="noteId"
+          (viewChange)="onDatabaseViewChange(block, $event)" (mutate)="onDatabaseMutated()"></app-database-block>
+
         <div *ngSwitchDefault class="flex-1">
-          <div
-            #blockContent
-            class="min-h-[28px] text-base leading-relaxed text-neutral-800 outline-none"
-            contenteditable="true"
-            [attr.data-block-id]="block.id"
-            [innerHTML]="block.html"
-            (focus)="handleBlockFocus(block)"
-            (input)="handleInput($event, block)"
-            (keydown)="onKeyDown($event, block)"
-          ></div>
+          <div #blockContent class="min-h-[28px] text-base leading-relaxed text-slate-100 outline-none"
+            contenteditable="true" [attr.data-block-id]="block.id" [innerHTML]="block.html"
+            (focus)="handleBlockFocus(block)" (input)="handleInput($event, block)" (keydown)="onKeyDown($event, block)">
+          </div>
         </div>
       </ng-container>
     </div>
   </div>
 
-  <div
-    *ngIf="slashOpen"
-    class="fixed z-50 w-64 rounded-xl border border-neutral-200 bg-white/98 p-2 shadow-xl"
-    [ngStyle]="{ left: slashX + 'px', top: slashY + 'px' }"
-  >
+  <div *ngIf="slashOpen"
+    class="fixed z-50 w-64 rounded-xl border border-slate-800/70 bg-slate-900/95 p-2 shadow-[0_18px_55px_rgba(8,15,40,0.75)]"
+    [ngStyle]="{ left: slashX + 'px', top: slashY + 'px' }">
     <input
-      class="mb-2 w-full rounded-md border border-neutral-200 px-2 py-1 text-sm text-neutral-600 focus:border-sky-400 focus:outline-none"
-      placeholder="Filter blocks..."
-      [(ngModel)]="slashQuery"
-    />
-    <div class="max-h-64 overflow-y-auto">
-      <button
-        *ngFor="let cmd of filteredSlashCommands"
-        type="button"
-        class="flex w-full items-start gap-3 rounded-lg px-2 py-1.5 text-left text-sm transition hover:bg-sky-50"
-        (click)="pickSlash(cmd)"
-      >
-        <span class="text-lg">{{ cmd.icon }}</span>
+      class="mb-2 w-full rounded-md border border-slate-800/70 bg-slate-900/70 px-2 py-1 text-sm text-slate-100 focus:border-amber-300 focus:outline-none"
+      placeholder="Filter blocks..." [(ngModel)]="slashQuery" />
+    <div class="max-h-64 space-y-1 overflow-y-auto">
+      <button *ngFor="let cmd of filteredSlashCommands" type="button"
+        class="flex w-full items-start gap-3 rounded-lg px-2 py-1.5 text-left text-sm transition hover:bg-amber-400/10"
+        (click)="pickSlash(cmd)">
+        <span class="text-lg text-amber-300/90">{{ cmd.icon }}</span>
         <span>
-          <span class="block font-medium text-neutral-800">{{ cmd.label }}</span>
-          <span class="block text-xs text-neutral-400">{{ cmd.description }}</span>
+          <span class="block font-medium text-slate-100">{{ cmd.label }}</span>
+          <span class="block text-xs text-slate-400/80">{{ cmd.description }}</span>
         </span>
       </button>
-      <div *ngIf="filteredSlashCommands.length === 0" class="px-2 py-3 text-xs text-neutral-400">
-        No blocks match “{{ slashQuery }}”.
+      <div *ngIf="filteredSlashCommands.length === 0" class="px-2 py-3 text-xs text-slate-400/80">
+        No blocks match "{{ slashQuery }}".
       </div>
     </div>
   </div>
 </div>
-
-
-
-
-
-
-

@@ -3,7 +3,7 @@
 }
 
 button {
-  transition: all 0.18s ease-in-out;
+  transition: all 0.2s ease-in-out;
 }
 
 .page-shell {
@@ -16,39 +16,34 @@ button {
 }
 
 .page-shell.dark-mode {
-  background-color: #0f172a;
+  background: radial-gradient(circle at top, rgba(30, 58, 138, 0.35), transparent 55%), #020617;
   color: #e2e8f0;
 }
 
 .page-shell.dark-mode .surface {
-  background-color: rgba(15, 23, 42, 0.9);
-  border-color: rgba(148, 163, 184, 0.25);
+  background-color: rgba(15, 23, 42, 0.92);
+  border-color: rgba(59, 130, 246, 0.3);
   color: #e2e8f0;
 }
 
 .page-shell.dark-mode .surface-card {
-  background-color: rgba(30, 41, 59, 0.85);
-  border-color: rgba(148, 163, 184, 0.25);
-  color: #dbeafe;
+  background-color: rgba(15, 23, 42, 0.86);
+  border-color: rgba(59, 130, 246, 0.3);
+  color: #f8fafc;
 }
 
 .page-shell.dark-mode input,
 .page-shell.dark-mode select,
 .page-shell.dark-mode textarea {
-  background-color: rgba(30, 41, 59, 0.6);
-  border-color: rgba(148, 163, 184, 0.35);
-  color: #e2e8f0;
+  background-color: rgba(15, 23, 42, 0.75);
+  border-color: rgba(59, 130, 246, 0.35);
+  color: #f8fafc;
 }
 
 .page-shell.dark-mode input::placeholder {
-  color: rgba(148, 163, 184, 0.7);
+  color: rgba(148, 163, 184, 0.65);
 }
 
 .page-shell.dark-mode button {
-  border-color: rgba(148, 163, 184, 0.35);
+  border-color: rgba(59, 130, 246, 0.35);
 }
-
-
-
-
-

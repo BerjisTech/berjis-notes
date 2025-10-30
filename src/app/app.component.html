@@ -1,19 +1,19 @@
-<div class="min-h-screen bg-neutral-100 text-neutral-900 flex">
+<div class="min-h-screen flex bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 text-slate-100">
   <!-- Desktop sidebar -->
   <aside
     *ngIf="authed === true"
-    class="hidden lg:flex w-[22rem] flex-col border-r border-neutral-200 bg-white/90 backdrop-blur"
+    class="hidden lg:flex w-[22rem] flex-col border-r border-blue-900/60 bg-slate-900/70 backdrop-blur-xl shadow-[0_0_40px_rgba(14,25,71,0.45)]"
   >
-    <div class="px-6 py-5 border-b border-neutral-200">
-      <div class="text-xs uppercase tracking-wide text-neutral-400">Workspace</div>
+    <div class="px-6 py-6 border-b border-blue-900/60">
+      <div class="text-[11px] uppercase tracking-[0.35em] text-blue-200/70">Workspace</div>
       <div class="mt-2 flex items-center justify-between">
         <div>
-          <div class="text-lg font-semibold text-neutral-900">Berjis Notes</div>
-          <div class="text-xs text-neutral-500">{{ syncLabel }}</div>
+          <div class="text-lg font-semibold text-white tracking-tight">Berjis Notes</div>
+          <div class="text-xs text-blue-200/70">{{ syncLabel }}</div>
         </div>
         <button
           type="button"
-          class="rounded-full bg-sky-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-sky-500"
+          class="rounded-full bg-gradient-to-r from-amber-400 via-amber-300 to-amber-400 px-4 py-2 text-sm font-semibold text-slate-950 shadow-lg shadow-amber-500/20 transition hover:from-amber-300 hover:via-amber-200 hover:to-amber-300"
           (click)="createNote()"
         >
           + New
@@ -21,12 +21,12 @@
       </div>
     </div>
 
-    <div class="px-6 py-5 border-b border-neutral-200 space-y-4">
+    <div class="px-6 py-5 border-b border-blue-900/60 space-y-4">
       <div class="relative">
         <input
           #searchBox
           type="search"
-          class="w-full rounded-xl border border-neutral-200 bg-white px-4 py-2.5 text-sm text-neutral-700 shadow-sm transition focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-100"
+          class="w-full rounded-xl border border-slate-800/70 bg-slate-900/70 px-4 py-2.5 text-sm text-slate-100 shadow-inner shadow-slate-950/40 transition focus:border-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-300/40"
           placeholder="Search notes (Ctrl + K)"
           [ngModel]="searchTerm"
           (ngModelChange)="onSearchInput($event)"
@@ -34,14 +34,14 @@
         <button
           *ngIf="searchTerm"
           type="button"
-          class="absolute inset-y-0 right-3 my-auto rounded-full bg-neutral-100 px-3 text-xs text-neutral-500 hover:bg-neutral-200"
+          class="absolute inset-y-0 right-3 my-auto rounded-full bg-slate-800/80 px-3 text-xs text-slate-300 hover:bg-slate-700"
           (click)="clearSearch()"
         >
           Clear
         </button>
       </div>
-      <div *ngIf="searching" class="text-xs text-neutral-500">Searching...</div>
-      <div *ngIf="searchError" class="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-xs text-red-600">
+      <div *ngIf="searching" class="text-xs text-blue-200/70">Searching…</div>
+      <div *ngIf="searchError" class="rounded-lg border border-red-500/60 bg-red-500/10 px-3 py-2 text-xs text-red-200">
         {{ searchError }}
       </div>
       <div *ngIf="!searching && searchResults.length" class="max-h-48 space-y-2 overflow-y-auto pr-2">
@@ -49,56 +49,53 @@
           *ngFor="let result of searchResults"
           type="button"
           (click)="openResult(result)"
-          class="w-full rounded-lg border border-neutral-200 bg-white px-4 py-3 text-left text-sm transition hover:border-sky-200 hover:bg-sky-50"
+          class="w-full rounded-lg border border-slate-800/70 bg-slate-900/70 px-4 py-3 text-left text-sm transition hover:border-amber-300/70 hover:bg-amber-400/10"
         >
-          <div class="font-medium text-neutral-800 truncate">{{ result.title || 'Untitled note' }}</div>
-          <div class="mt-1 text-xs text-neutral-400 truncate">{{ result.snippet }}</div>
-          <div class="mt-1 text-[11px] text-neutral-400">Updated {{ result.updatedAt | date: 'medium' }}</div>
+          <div class="font-medium text-slate-100 truncate">{{ result.title || 'Untitled note' }}</div>
+          <div class="mt-1 text-xs text-slate-300/80 truncate">{{ result.snippet }}</div>
+          <div class="mt-1 text-[11px] text-slate-400/80">Updated {{ result.updatedAt | date: 'medium' }}</div>
         </button>
       </div>
-      <div class="flex items-center justify-between text-[11px] text-neutral-400">
+      <div class="flex items-center justify-between text-[11px] text-blue-200/60">
         <div class="flex items-center gap-2">
-          <span class="inline-block h-2 w-2 rounded-full" [class.bg-sky-500]="syncMode === 'remote'" [class.bg-amber-400]="syncMode === 'local'"></span>
+          <span class="inline-block h-2 w-2 rounded-full" [class.bg-blue-400]="syncMode === 'remote'" [class.bg-amber-400]="syncMode === 'local'"></span>
           <span>{{ syncMode === 'remote' ? 'Synced with cloud' : 'Working locally' }}</span>
         </div>
-        <span *ngIf="lastError" class="text-red-500">• {{ lastError }}</span>
+        <span *ngIf="lastError" class="text-amber-400">⚠ {{ lastError }}</span>
       </div>
     </div>
 
-    <div class="px-6 py-4 border-b border-neutral-200">
+    <div class="px-6 py-4 border-b border-blue-900/60">
       <div class="grid grid-cols-3 gap-2">
         <button
           type="button"
-          class="rounded-lg border px-3 py-2 text-sm font-medium transition"
-          [class.border-sky-400]="filter === 'active'"
-          [class.bg-sky-50]="filter === 'active'"
+          class="rounded-lg border px-3 py-2 text-sm font-medium transition border-transparent bg-slate-900/60"
+          [ngClass]="{ 'border-blue-400 bg-blue-900/60': filter === 'active' }"
           (click)="setFilter('active')"
         >
-          Active <span class="text-xs text-neutral-400">({{ notesByFilter.active.length }})</span>
+          Active <span class="text-xs text-blue-200/70">({{ notesByFilter.active.length }})</span>
         </button>
         <button
           type="button"
-          class="rounded-lg border px-3 py-2 text-sm font-medium transition"
-          [class.border-sky-400]="filter === 'archived'"
-          [class.bg-sky-50]="filter === 'archived'"
+          class="rounded-lg border px-3 py-2 text-sm font-medium transition border-transparent bg-slate-900/60"
+          [ngClass]="{ 'border-blue-400 bg-blue-900/60': filter === 'archived' }"
           (click)="setFilter('archived')"
         >
-          Archived <span class="text-xs text-neutral-400">({{ notesByFilter.archived.length }})</span>
+          Archived <span class="text-xs text-blue-200/70">({{ notesByFilter.archived.length }})</span>
         </button>
         <button
           type="button"
-          class="rounded-lg border px-3 py-2 text-sm font-medium transition"
-          [class.border-sky-400]="filter === 'deleted'"
-          [class.bg-sky-50]="filter === 'deleted'"
+          class="rounded-lg border px-3 py-2 text-sm font-medium transition border-transparent bg-slate-900/60"
+          [ngClass]="{ 'border-blue-400 bg-blue-900/60': filter === 'deleted' }"
           (click)="setFilter('deleted')"
         >
-          Trash <span class="text-xs text-neutral-400">({{ notesByFilter.deleted.length }})</span>
+          Trash <span class="text-xs text-blue-200/70">({{ notesByFilter.deleted.length }})</span>
         </button>
       </div>
     </div>
 
     <div class="flex-1 overflow-y-auto px-4 py-5 space-y-2">
-      <div *ngIf="loadingNotes" class="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs text-neutral-500">
+      <div *ngIf="loadingNotes" class="rounded-lg border border-blue-900/60 bg-slate-900/70 px-3 py-2 text-xs text-blue-200/70">
         Loading notes...
       </div>
       <ng-container *ngIf="!loadingNotes && visibleNotes.length; else emptyState">
@@ -106,26 +103,25 @@
           *ngFor="let note of visibleNotes"
           type="button"
           (click)="select(note)"
-          class="group w-full rounded-2xl border border-transparent bg-white/80 px-4 py-3 text-left shadow-sm transition hover:border-sky-200 hover:bg-sky-50"
-          [class.border-sky-300]="activeNote?.id === note.id"
-          [class.bg-sky-50]="activeNote?.id === note.id"
+          class="group w-full rounded-2xl border border-transparent bg-slate-900/70 px-4 py-3 text-left shadow-lg shadow-slate-950/40 transition hover:border-amber-300/70 hover:bg-amber-400/10"
+          [ngClass]="{ 'border-blue-500 bg-blue-900/60': activeNote?.id === note.id }"
         >
           <div class="flex items-center justify-between gap-3">
-            <div class="text-sm font-semibold text-neutral-800 truncate">{{ note.title || 'Untitled note' }}</div>
-            <div class="text-xs text-neutral-400 whitespace-nowrap">{{ note.updatedAt | date: 'MMM d, h:mm a' }}</div>
+            <div class="text-sm font-semibold text-slate-100 truncate">{{ note.title || 'Untitled note' }}</div>
+            <div class="text-xs text-blue-200/70 whitespace-nowrap">{{ note.updatedAt | date: 'MMM d, h:mm a' }}</div>
           </div>
-          <div class="mt-1 text-xs text-neutral-500">
+          <div class="mt-1 text-xs text-slate-300/80">
             {{ preview(note) }}
           </div>
         </button>
       </ng-container>
       <ng-template #emptyState>
-        <div class="rounded-xl border border-dashed border-neutral-300 bg-white/70 px-5 py-8 text-center text-sm text-neutral-500">
-          <div class="font-medium mb-2">No {{ filter }} notes yet</div>
-          <p class="text-xs text-neutral-400">Create a note to start writing ideas, todos, and databases.</p>
+        <div class="rounded-xl border border-dashed border-blue-900/60 bg-slate-900/70 px-5 py-8 text-center text-sm text-slate-300/80">
+          <div class="font-medium mb-2 text-slate-100">No {{ filter }} notes yet</div>
+          <p class="text-xs text-slate-400/80">Create a note to start writing ideas, todos, and databases.</p>
           <button
             type="button"
-            class="mt-4 rounded-full border border-neutral-200 px-4 py-2 text-xs font-medium text-neutral-600 transition hover:border-sky-300 hover:text-sky-600"
+            class="mt-4 rounded-full border border-blue-900/60 px-4 py-2 text-xs font-medium text-slate-100 transition hover:border-amber-300 hover:text-amber-300"
             (click)="createNote()"
           >
             Create your first note
@@ -138,23 +134,23 @@
   <main class="flex-1 min-h-screen overflow-y-auto">
     <div
       *ngIf="authed === true"
-      class="lg:hidden sticky top-0 z-10 bg-white/95 px-5 py-4 border-b border-neutral-200 shadow-sm backdrop-blur"
+      class="lg:hidden sticky top-0 z-10 bg-slate-900/90 px-5 py-4 border-b border-blue-900/60 shadow-[0_10px_40px_rgba(8,15,40,0.65)] backdrop-blur-xl"
     >
       <div class="flex items-center gap-3">
         <div class="flex-1">
-          <div class="text-sm font-semibold text-neutral-800">Berjis Notes</div>
-          <div class="text-[11px] text-neutral-400">{{ syncLabel }}</div>
+          <div class="text-sm font-semibold text-white tracking-tight">Berjis Notes</div>
+          <div class="text-[11px] text-blue-200/70">{{ syncLabel }}</div>
         </div>
         <button
           type="button"
-          class="rounded-full border border-neutral-200 px-3 py-2 text-sm text-neutral-600"
+          class="rounded-full border border-blue-900/60 px-3 py-2 text-sm text-blue-200/80 hover:bg-slate-800/70"
           (click)="focusSearch()"
         >
           Search
         </button>
         <button
           type="button"
-          class="rounded-full bg-sky-600 px-3 py-2 text-sm font-medium text-white shadow-sm"
+          class="rounded-full bg-gradient-to-r from-amber-400 via-amber-300 to-amber-400 px-3 py-2 text-sm font-semibold text-slate-950 shadow-md shadow-amber-500/30"
           (click)="createNote()"
         >
           + New
@@ -164,14 +160,14 @@
         <input
           #searchBox
           type="search"
-          class="w-full rounded-xl border border-neutral-200 bg-white px-4 py-2.5 text-sm text-neutral-700 shadow-sm transition focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-100"
+          class="w-full rounded-xl border border-slate-800/70 bg-slate-900/70 px-4 py-2.5 text-sm text-slate-100 shadow-inner transition focus:border-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-300/40"
           placeholder="Search notes"
           [ngModel]="searchTerm"
           (ngModelChange)="onSearchInput($event)"
         />
       </div>
-      <div *ngIf="searching" class="mt-2 text-xs text-neutral-500">Searching...</div>
-      <div *ngIf="searchError" class="mt-2 rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-xs text-red-600">
+      <div *ngIf="searching" class="mt-2 text-xs text-blue-200/70">Searching…</div>
+      <div *ngIf="searchError" class="mt-2 rounded-lg border border-red-500/60 bg-red-500/10 px-3 py-2 text-xs text-red-200">
         {{ searchError }}
       </div>
       <div *ngIf="!searching && searchResults.length" class="mt-3 max-h-56 space-y-2 overflow-y-auto">
@@ -179,10 +175,10 @@
           *ngFor="let result of searchResults"
           type="button"
           (click)="openResult(result)"
-          class="w-full rounded-xl border border-neutral-200 bg-white px-4 py-3 text-left text-sm transition hover:border-sky-200 hover:bg-sky-50"
+          class="w-full rounded-xl border border-slate-800/70 bg-slate-900/70 px-4 py-3 text-left text-sm transition hover:border-amber-300/70 hover:bg-amber-400/10"
         >
-          <div class="font-medium text-neutral-800 truncate">{{ result.title || 'Untitled note' }}</div>
-          <div class="mt-1 text-xs text-neutral-400 truncate">{{ result.snippet }}</div>
+          <div class="font-medium text-slate-100 truncate">{{ result.title || 'Untitled note' }}</div>
+          <div class="mt-1 text-xs text-slate-300/80 truncate">{{ result.snippet }}</div>
         </button>
       </div>
     </div>

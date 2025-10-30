@@ -26,6 +26,24 @@ interface SlashCommand {
   icon: string;
 }
 
+interface TypeOption {
+  label: string;
+  description: string;
+  value: BlockType;
+  icon: string;
+}
+
+interface ImagePreset {
+  label: string;
+  url: string;
+}
+
+interface CaretSnapshot {
+  blockId: string;
+  offset: number;
+  mode: 'contenteditable' | 'textarea';
+}
+
 @Component({
   standalone: true,
   selector: 'app-block-editor',
@@ -43,21 +61,129 @@ export class BlockEditorComponent implements AfterViewInit, OnDestroy, OnChanges
   @Input()
   set document(doc: EditorDocument | null) {
     this._document = doc;
+    if (this.pendingLocalUpdate) {
+      this.pendingLocalUpdate = false;
+      setTimeout(() => this.restorePendingCaret());
+      return;
+    }
     this.blocks = doc ? cloneBlocks(doc.blocks) : [createBlock('paragraph')];
+    this.blocks.forEach((block) => this.hydrateBlock(block));
+    this.typeMenuOpenId = null;
+    this.imageGalleryOpenId = null;
     queueMicrotask(() => this.ensureAtLeastOneBlock());
-    this.blocks.forEach((block) => {
-      if (block.type === 'database') {
-        const view = (block.view as any) || (block.props?.['view'] as any);
-        block.view = view === 'list' ? 'list' : 'table';
-        block.props = { ...(block.props || {}), view: block.view };
-        if (!block.databaseId) {
-          void this.ensureDatabase(block);
-        }
+    setTimeout(() => this.restorePendingCaret());
+  }
+
+  private hydrateBlock(block: EditorBlock) {
+    if (block.type === 'database') {
+      const view = (block.view as any) || (block.props?.['view'] as any);
+      block.view = view === 'list' ? 'list' : 'table';
+      block.props = { ...(block.props || {}), view: block.view };
+      if (!block.databaseId) {
+        void this.ensureDatabase(block);
       }
-      if (block.type === 'bookmark' && block.bookmark && typeof block.bookmark !== 'object') {
+    }
+    if (block.type === 'bookmark') {
+      block.url = block.url || '';
+      block.caption = block.caption || '';
+      if (block.bookmark && typeof block.bookmark !== 'object') {
         block.bookmark = undefined;
       }
-    });
+    }
+    if (block.type === 'image') {
+      block.url = block.url || '';
+      block.caption = block.caption || '';
+    }
+    if (block.type === 'todo') {
+      block.checked = !!block.checked;
+      block.html = block.html ?? '';
+    }
+    if (
+      block.type !== 'code' &&
+      block.type !== 'divider' &&
+      block.type !== 'image' &&
+      block.type !== 'bookmark' &&
+      block.type !== 'database'
+    ) {
+      block.html = block.html ?? '';
+    }
+    if (block.type === 'code') {
+      block.code = block.code ?? '';
+      (block as any).language = (block as any).language || 'plaintext';
+    }
+  }
+
+  private captureContentEditableCaret(): CaretSnapshot | null {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return null;
+    const range = selection.getRangeAt(0);
+    const blockEl = this.findBlockRoot(range.startContainer);
+    if (!blockEl) return null;
+    const blockId = blockEl.dataset['blockId'];
+    if (!blockId) return null;
+    const preRange = range.cloneRange();
+    preRange.selectNodeContents(blockEl);
+    preRange.setEnd(range.startContainer, range.startOffset);
+    const offset = preRange.toString().length;
+    return { blockId, offset, mode: 'contenteditable' };
+  }
+
+  private findBlockRoot(node: Node | null): HTMLElement | null {
+    if (!node) return null;
+    const element = node instanceof HTMLElement ? node : node.parentElement;
+    return element ? element.closest<HTMLElement>('[data-block-id]') : null;
+  }
+
+  private resolveTextPosition(root: HTMLElement, targetOffset: number): { node: Node; offset: number } {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+    let currentOffset = 0;
+    let node = walker.nextNode() as Text | null;
+    while (node) {
+      const contentLength = node.textContent?.length ?? 0;
+      if (currentOffset + contentLength >= targetOffset) {
+        const offsetWithin = Math.max(0, Math.min(contentLength, targetOffset - currentOffset));
+        return { node, offset: offsetWithin };
+      }
+      currentOffset += contentLength;
+      node = walker.nextNode() as Text | null;
+    }
+    return { node: root, offset: root.childNodes.length };
+  }
+
+  private restorePendingCaret() {
+    if (!this.pendingCaret) return;
+    const snapshot = this.pendingCaret;
+    this.pendingCaret = null;
+    requestAnimationFrame(() => this.restoreCaret(snapshot));
+  }
+
+  private restoreCaret(snapshot: CaretSnapshot) {
+    if (snapshot.mode === 'textarea') {
+      const textarea = this.getCodeTextarea(snapshot.blockId);
+      if (!textarea) return;
+      const position = Math.max(0, Math.min(snapshot.offset, textarea.value.length));
+      textarea.focus();
+      textarea.setSelectionRange(position, position);
+      return;
+    }
+    const blockEl = this.getBlockElement(snapshot.blockId);
+    if (!blockEl) return;
+    blockEl.focus();
+    const { node, offset } = this.resolveTextPosition(blockEl, snapshot.offset);
+    const range = document.createRange();
+    const selection = window.getSelection();
+    try {
+      range.setStart(node, offset);
+      range.collapse(true);
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+    } catch {
+      // If selection restoration fails we silently ignore.
+    }
+  }
+
+  private getCodeTextarea(blockId: string): HTMLTextAreaElement | null {
+    return document.querySelector<HTMLTextAreaElement>(`textarea[data-block-id=\"${blockId}\"]`);
   }
 
   get document(): EditorDocument | null { return this._document; }
@@ -69,52 +195,56 @@ export class BlockEditorComponent implements AfterViewInit, OnDestroy, OnChanges
   dragBlockId: string | null = null;
   slashOpen = false;
   slashBlockId: string | null = null;
-  slashCommands: SlashCommand[] = [
-    { label: 'Text', description: 'Paragraph text', type: 'paragraph', icon: 'T' },
-    { label: 'Heading 1', description: 'Large section title', type: 'heading-1', icon: 'H1' },
-    { label: 'Heading 2', description: 'Medium section title', type: 'heading-2', icon: 'H2' },
-    { label: 'Heading 3', description: 'Small section title', type: 'heading-3', icon: 'H3' },
-    { label: 'Bulleted list', description: 'Create a simple list', type: 'bulleted-list', icon: '•' },
-    { label: 'Numbered list', description: 'Create an ordered list', type: 'numbered-list', icon: '1.' },
-    { label: 'To-do', description: 'Track tasks with checkboxes', type: 'todo', icon: '☑︎' },
-    { label: 'Quote', description: 'Capture a quote', type: 'quote', icon: '❝' },
-    { label: 'Callout', description: 'Highlight information', type: 'callout-info', icon: '★' },
-    { label: 'Warning', description: 'Important warning callout', type: 'callout-warning', icon: '⚠︎' },
-    { label: 'Success', description: 'Success callout', type: 'callout-success', icon: '✓' },
-    { label: 'Code', description: 'Capture code snippet', type: 'code', icon: '</>' },
-    { label: 'Divider', description: 'Visual divider', type: 'divider', icon: '—' },
-    { label: 'Image', description: 'Upload or paste images', type: 'image', icon: '🖼️' },
-    { label: 'Bookmark', description: 'Save a link preview', type: 'bookmark', icon: '🔗' },
-    { label: 'Database', description: 'Structured table with rows and columns', type: 'database', icon: '▦' },
-  ];
+  slashCommands: SlashCommand[] = [];
 
   slashX = 0;
   slashY = 0;
   slashQuery = '';
-  typeOptions: { label: string; value: BlockType }[] = [
-    { label: 'Paragraph', value: 'paragraph' },
-    { label: 'Heading 1', value: 'heading-1' },
-    { label: 'Heading 2', value: 'heading-2' },
-    { label: 'Heading 3', value: 'heading-3' },
-    { label: 'Bulleted list', value: 'bulleted-list' },
-    { label: 'Numbered list', value: 'numbered-list' },
-    { label: 'To-do', value: 'todo' },
-    { label: 'Quote', value: 'quote' },
-    { label: 'Callout (info)', value: 'callout-info' },
-    { label: 'Callout (warning)', value: 'callout-warning' },
-    { label: 'Callout (success)', value: 'callout-success' },
-    { label: 'Code', value: 'code' },
-    { label: 'Divider', value: 'divider' },
-  { label: 'Image', value: 'image' },
-  { label: 'Bookmark', value: 'bookmark' },
-  { label: 'Database', value: 'database' },
-];
+
+  readonly typeOptions: TypeOption[] = [
+    { label: 'Paragraph', description: 'Paragraph text', value: 'paragraph', icon: 'Aa' },
+    { label: 'Heading 1', description: 'Large section title', value: 'heading-1', icon: 'H1' },
+    { label: 'Heading 2', description: 'Medium section title', value: 'heading-2', icon: 'H2' },
+    { label: 'Heading 3', description: 'Small section title', value: 'heading-3', icon: 'H3' },
+    { label: 'Bulleted list', description: 'Create a simple list', value: 'bulleted-list', icon: '*' },
+    { label: 'Numbered list', description: 'Create an ordered list', value: 'numbered-list', icon: '1.' },
+    { label: 'To-do', description: 'Track tasks with checkboxes', value: 'todo', icon: '[ ]' },
+    { label: 'Quote', description: 'Capture a quote', value: 'quote', icon: '""' },
+    { label: 'Callout (info)', description: 'Highlight information', value: 'callout-info', icon: 'i' },
+    { label: 'Callout (warning)', description: 'Important warning', value: 'callout-warning', icon: '!' },
+    { label: 'Callout (success)', description: 'Celebrate success', value: 'callout-success', icon: 'OK' },
+    { label: 'Code', description: 'Capture code snippet', value: 'code', icon: '{ }' },
+    { label: 'Divider', description: 'Visual divider', value: 'divider', icon: '--' },
+    { label: 'Image', description: 'Upload or paste images', value: 'image', icon: 'Img' },
+    { label: 'Bookmark', description: 'Save a link preview', value: 'bookmark', icon: 'Bk' },
+    { label: 'Database', description: 'Structured table', value: 'database', icon: 'Tbl' },
+  ];
+  typeMenuOpenId: string | null = null;
+  imageGalleryOpenId: string | null = null;
+
+  readonly imageLibrary: ImagePreset[] = [
+    { label: 'Aurora', url: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1600&q=80' },
+    { label: 'Ocean', url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80' },
+    { label: 'Desert', url: 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1600&q=80' },
+    { label: 'Forest', url: 'https://images.unsplash.com/photo-1482192597420-4817fdd7e8b0?auto=format&fit=crop&w=1600&q=80' },
+    { label: 'City', url: 'https://images.unsplash.com/photo-1467269204594-9661b134dd2b?auto=format&fit=crop&w=1600&q=80' },
+    { label: 'Workspace', url: 'https://images.unsplash.com/photo-1517430816045-df4b7de11d1d?auto=format&fit=crop&w=1600&q=80' },
+  ];
 
   uploadingBlocks = new Set<string>();
   bookmarkLoadingBlocks = new Set<string>();
   bookmarkErrors: Record<string, string> = {};
+  private pendingLocalUpdate = false;
+  private pendingCaret: CaretSnapshot | null = null;
 
-  constructor(private notes: NotesService) {}
+  constructor(private notes: NotesService) {
+    this.slashCommands = this.typeOptions.map(({ label, description, value, icon }) => ({
+      label,
+      description,
+      type: value,
+      icon,
+    }));
+  }
 
   private emitTimer?: number;
 
@@ -169,7 +299,15 @@ export class BlockEditorComponent implements AfterViewInit, OnDestroy, OnChanges
   handleInput(event: Event, block: EditorBlock) {
     if (block.type === 'code') {
       const target = event.target as HTMLTextAreaElement;
+      const caretOffset = target.selectionStart ?? target.value.length;
       block.code = target.value;
+      const snapshot: CaretSnapshot = {
+        blockId: block.id,
+        offset: caretOffset,
+        mode: 'textarea',
+      };
+      this.pendingCaret = snapshot;
+      requestAnimationFrame(() => this.restoreCaret(snapshot));
     } else if (block.type === 'image') {
       const target = event.target as HTMLInputElement;
       block.url = target.value;
@@ -177,8 +315,17 @@ export class BlockEditorComponent implements AfterViewInit, OnDestroy, OnChanges
       const target = event.target as HTMLInputElement;
       block.url = target.value;
     } else {
+      const caretSnapshot = this.captureContentEditableCaret();
       const el = event.target as HTMLElement;
       block.html = el.innerHTML;
+      if (caretSnapshot) {
+        this.pendingCaret = caretSnapshot;
+        requestAnimationFrame(() => this.restoreCaret(caretSnapshot));
+      }
+    }
+    if (!this.pendingCaret && block.type !== 'image' && block.type !== 'bookmark') {
+      const caret = this.captureContentEditableCaret();
+      if (caret) this.pendingCaret = caret;
     }
     this.scheduleEmit();
     this.updateSlashState(block);
@@ -207,6 +354,7 @@ export class BlockEditorComponent implements AfterViewInit, OnDestroy, OnChanges
       const uploaded = await this.notes.uploadImage(this.noteId, block.id, file);
       block.url = uploaded.url;
       if (!block.caption) block.caption = uploaded.fileName;
+      this.imageGalleryOpenId = null;
       this.scheduleEmit();
     } catch (err) {
       console.error('image upload failed', err);
@@ -380,6 +528,27 @@ export class BlockEditorComponent implements AfterViewInit, OnDestroy, OnChanges
     this.scheduleEmit();
   }
 
+  insertBlockBefore(target: EditorBlock, newBlock: EditorBlock) {
+    const idx = this.blocks.findIndex((b) => b.id === target.id);
+    const insertAt = idx <= 0 ? 0 : idx;
+    this.blocks.splice(insertAt, 0, newBlock);
+    this.scheduleEmit();
+  }
+
+  addAdjacentBlock(block: EditorBlock, event: MouseEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    const newBlockType =
+      block.type === 'todo' ? 'todo' : block.type === 'code' ? 'code' : 'paragraph';
+    const newBlock = createBlock(newBlockType);
+    if (event.altKey) {
+      this.insertBlockBefore(block, newBlock);
+    } else {
+      this.insertBlockAfter(block, newBlock);
+    }
+    queueMicrotask(() => this.focusBlock(newBlock.id));
+  }
+
   fragmentToHtml(fragment: DocumentFragment): string {
     const div = document.createElement('div');
     div.appendChild(fragment);
@@ -399,6 +568,7 @@ export class BlockEditorComponent implements AfterViewInit, OnDestroy, OnChanges
   }
 
   focusBlock(blockId: string) {
+    this.pendingCaret = null;
     const el = this.getBlockElement(blockId);
     if (el) {
       el.focus();
@@ -414,6 +584,7 @@ export class BlockEditorComponent implements AfterViewInit, OnDestroy, OnChanges
   }
 
   focusBlockByIndex(index: number, pos: 'start' | 'end' = 'end') {
+    this.pendingCaret = null;
     const block = this.blocks[index];
     if (!block) return;
     const el = this.getBlockElement(block.id);
@@ -439,6 +610,8 @@ export class BlockEditorComponent implements AfterViewInit, OnDestroy, OnChanges
     const idx = this.blocks.findIndex((b) => b.id === block.id);
     if (idx === -1) return;
     this.blocks.splice(idx, 1);
+    if (this.typeMenuOpenId === block.id) this.typeMenuOpenId = null;
+    if (this.imageGalleryOpenId === block.id) this.imageGalleryOpenId = null;
     const nextIndex = Math.min(idx, this.blocks.length - 1);
     queueMicrotask(() => this.focusBlockByIndex(nextIndex));
     this.scheduleEmit();
@@ -467,6 +640,56 @@ export class BlockEditorComponent implements AfterViewInit, OnDestroy, OnChanges
     }
     this.scheduleEmit();
     this.closeSlash();
+    if (this.typeMenuOpenId === block.id) this.typeMenuOpenId = null;
+    if (this.imageGalleryOpenId === block.id) this.imageGalleryOpenId = null;
+  }
+
+  toggleTypeMenu(block: EditorBlock) {
+    this.typeMenuOpenId = this.typeMenuOpenId === block.id ? null : block.id;
+    if (this.typeMenuOpenId) {
+      this.imageGalleryOpenId = null;
+    }
+  }
+
+  selectType(block: EditorBlock, type: BlockType) {
+    this.transformBlock(block, type);
+    this.typeMenuOpenId = null;
+  }
+
+  getTypeIcon(type: BlockType): string {
+    return this.typeOptions.find((option) => option.value === type)?.icon ?? 'Aa';
+  }
+
+  getTypeLabel(type: BlockType): string {
+    return this.typeOptions.find((option) => option.value === type)?.label ?? 'Paragraph';
+  }
+
+  toggleImageGallery(block: EditorBlock) {
+    this.imageGalleryOpenId = this.imageGalleryOpenId === block.id ? null : block.id;
+    if (this.imageGalleryOpenId) {
+      this.typeMenuOpenId = null;
+    }
+  }
+
+  triggerImageUpload(input: HTMLInputElement, block: EditorBlock) {
+    if (this.uploadingBlocks.has(block.id)) return;
+    this.imageGalleryOpenId = null;
+    input.click();
+  }
+
+  setImageFromLibrary(block: EditorBlock, preset: ImagePreset) {
+    block.url = preset.url;
+    if (!block.caption) {
+      block.caption = preset.label;
+    }
+    this.imageGalleryOpenId = null;
+    this.scheduleEmit();
+  }
+
+  clearImage(block: EditorBlock) {
+    block.url = '';
+    this.imageGalleryOpenId = null;
+    this.scheduleEmit();
   }
 
   @HostListener('document:selectionchange')
@@ -474,6 +697,18 @@ export class BlockEditorComponent implements AfterViewInit, OnDestroy, OnChanges
     if (!this.slashOpen) return;
     const block = this.blocks.find((b) => b.id === this.slashBlockId);
     if (block) this.updateSlashState(block);
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent) {
+    const target = event.target as HTMLElement | null;
+    if (!target) return;
+    if (this.typeMenuOpenId && !target.closest('[data-block-type-menu]') && !target.closest('[data-block-type-trigger]')) {
+      this.typeMenuOpenId = null;
+    }
+    if (this.imageGalleryOpenId && !target.closest('[data-image-gallery]') && !target.closest('[data-image-gallery-trigger]')) {
+      this.imageGalleryOpenId = null;
+    }
   }
 
   openSlash(block: EditorBlock) {
@@ -552,12 +787,18 @@ export class BlockEditorComponent implements AfterViewInit, OnDestroy, OnChanges
   }
   scheduleEmit() {
     if (this.emitTimer) window.clearTimeout(this.emitTimer);
+    if (!this.pendingCaret) {
+      const caret = this.captureContentEditableCaret();
+      if (caret) this.pendingCaret = caret;
+    }
     this.emitTimer = window.setTimeout(() => {
       const doc: EditorDocument = {
         version: this._document?.version ?? 1,
         meta: this._document?.meta,
         blocks: cloneBlocks(this.blocks),
       };
+      this.pendingLocalUpdate = true;
+      this._document = doc;
       this.documentChange.emit(doc);
     }, 120);
   }
