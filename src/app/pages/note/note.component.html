@@ -9,22 +9,64 @@
         <div class="h-full w-full bg-gradient-to-br from-sky-300 via-indigo-300 to-purple-300"></div>
       </ng-template>
       <div class="absolute bottom-4 right-6 flex items-center gap-2">
-        <button
-          type="button"
-          class="rounded-full bg-white/80 px-4 py-2 text-sm font-medium text-neutral-600 shadow-sm transition hover:bg-white"
-          (click)="setCover()"
-        >
-          {{ coverImage ? 'Change cover' : 'Add cover' }}
-        </button>
+        <div class="relative">
+          <button
+            #coverTrigger
+            type="button"
+            class="rounded-full bg-white/80 px-4 py-2 text-sm font-medium text-neutral-600 shadow-sm transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-70"
+            (click)="setCover()"
+            [disabled]="coverUploading"
+          >
+            {{ coverUploading ? 'Uploading…' : coverImage ? 'Change cover' : 'Add cover' }}
+          </button>
+          <div
+            *ngIf="coverMenuOpen"
+            #coverMenu
+            class="absolute right-0 z-20 mt-2 w-64 rounded-xl border border-neutral-200 bg-white/95 p-3 text-sm text-neutral-600 shadow-xl"
+          >
+            <button
+              type="button"
+              class="flex w-full items-center justify-between rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-left text-sm font-medium text-neutral-600 transition hover:border-sky-300 hover:text-sky-600"
+              (click)="triggerCoverUpload()"
+            >
+              <span>Select from device</span>
+              <span class="text-xs text-neutral-400">Upload</span>
+            </button>
+            <div class="mt-3 text-xs uppercase tracking-wide text-neutral-400">Library</div>
+            <div class="mt-2 grid grid-cols-2 gap-2">
+              <button
+                *ngFor="let preset of coverLibrary"
+                type="button"
+                class="group overflow-hidden rounded-lg border border-neutral-200 bg-white text-left transition hover:border-sky-300 hover:bg-sky-50"
+                (click)="setCoverFromLibrary(preset.url)"
+              >
+                <div class="h-20 w-full overflow-hidden">
+                  <img [src]="preset.url" [alt]="preset.label" class="h-full w-full object-cover transition group-hover:scale-105" />
+                </div>
+                <div class="px-2 py-1 text-xs font-medium text-neutral-600 group-hover:text-sky-600">
+                  {{ preset.label }}
+                </div>
+              </button>
+            </div>
+            <div
+              *ngIf="coverUploadError"
+              class="mt-3 rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-xs text-red-600"
+            >
+              {{ coverUploadError }}
+            </div>
+          </div>
+        </div>
         <button
           *ngIf="coverImage"
           type="button"
           class="rounded-full bg-white/70 px-4 py-2 text-sm text-neutral-500 transition hover:bg-white"
           (click)="removeCover()"
+          [disabled]="coverUploading"
         >
           Remove
         </button>
       </div>
+      <input #coverUploadInput type="file" class="hidden" accept="image/*" (change)="onCoverFileSelected($event)" />
     </div>
 
     <div class="-mt-16 mx-auto max-w-5xl rounded-3xl bg-white/90 px-6 pb-16 pt-8 shadow-xl backdrop-blur surface sm:px-12">
@@ -65,13 +107,32 @@
             >
               {{ darkMode ? 'Light mode' : 'Dark mode' }}
             </button>
-            <button
-              type="button"
-              class="rounded-full border border-neutral-200 bg-white px-4 py-2 text-neutral-500 transition hover:border-neutral-300 hover:text-neutral-700"
-              (click)="archive()"
-            >
-              Archive
-            </button>
+            <ng-container [ngSwitch]="note?.status">
+              <button
+                *ngSwitchCase="'archived'"
+                type="button"
+                class="rounded-full border border-neutral-200 bg-white px-4 py-2 text-neutral-500 transition hover:border-neutral-300 hover:text-neutral-700"
+                (click)="restore()"
+              >
+                Unarchive
+              </button>
+              <button
+                *ngSwitchCase="'deleted'"
+                type="button"
+                class="rounded-full border border-neutral-200 bg-white px-4 py-2 text-neutral-500 transition hover:border-neutral-300 hover:text-neutral-700"
+                (click)="restore()"
+              >
+                Restore
+              </button>
+              <button
+                *ngSwitchDefault
+                type="button"
+                class="rounded-full border border-neutral-200 bg-white px-4 py-2 text-neutral-500 transition hover:border-neutral-300 hover:text-neutral-700"
+                (click)="archive()"
+              >
+                Archive
+              </button>
+            </ng-container>
             <button
               type="button"
               class="rounded-full border border-neutral-200 bg-white px-4 py-2 text-neutral-500 transition hover:border-neutral-300 hover:text-neutral-700"
@@ -109,71 +170,104 @@
                   <div class="flex items-center justify-between text-xs text-neutral-400">
                     <input
                       class="w-full bg-transparent text-sm font-medium text-neutral-700 outline-none"
+                      [class.cursor-default]="isSystemDateProperty(property)"
+                      [readonly]="isSystemDateProperty(property)"
                       [(ngModel)]="property.name"
                       (ngModelChange)="onPropertyChange(property)"
                     />
-                    <button
+                    <button *ngIf="!isSystemDateProperty(property)"
                       type="button"
-                      class="opacity-0 pl-2 text-neutral-300 transition hover-controls hover:text-red-500"
+                      class="opacity-0 pl-2 text-xs font-medium text-neutral-300 transition hover-controls hover:text-red-500"
                       (click)="removeProperty(property)"
                     >
-                      ✕
+                      Remove
                     </button>
                   </div>
-                  <div class="mt-2 flex gap-3">
-                    <select
-                      class="rounded-md border border-neutral-200 bg-neutral-50 px-2 py-1 text-xs text-neutral-600 focus:border-sky-300 focus:outline-none"
-                      [(ngModel)]="property.type"
-                      (ngModelChange)="changePropertyType(property, $event)"
-                    >
-                      <option value="text">Text</option>
-                      <option value="date">Date</option>
-                      <option value="select">Select</option>
-                      <option value="multi-select">Multi-select</option>
-                      <option value="number">Number</option>
-                      <option value="checkbox">Checkbox</option>
-                    </select>
-                    <ng-container [ngSwitch]="property.type">
-                      <input
-                        *ngSwitchCase="'date'"
-                        type="date"
-                        class="flex-1 rounded-md border border-neutral-200 px-2 py-1 text-sm text-neutral-600 focus:border-sky-300 focus:outline-none"
-                        [(ngModel)]="property.value"
-                        (ngModelChange)="onPropertyChange(property)"
-                      />
-                      <input
-                        *ngSwitchCase="'number'"
-                        type="number"
-                        class="flex-1 rounded-md border border-neutral-200 px-2 py-1 text-sm text-neutral-600 focus:border-sky-300 focus:outline-none"
-                        [(ngModel)]="property.value"
-                        (ngModelChange)="onPropertyChange(property)"
-                      />
-                      <label *ngSwitchCase="'checkbox'" class="flex items-center gap-2 text-sm text-neutral-600">
+                  <ng-container *ngIf="!isSystemDateProperty(property); else systemPropertyDisplay">
+                    <div class="mt-2 flex flex-wrap gap-3">
+                      <select
+                        class="rounded-md border border-neutral-200 bg-neutral-50 px-2 py-1 text-xs text-neutral-600 focus:border-sky-300 focus:outline-none"
+                        [(ngModel)]="property.type"
+                        (ngModelChange)="changePropertyType(property, $event)"
+                      >
+                        <option value="text">Text</option>
+                        <option value="date">Date</option>
+                        <option value="select">Select</option>
+                        <option value="multi-select">Multi-select</option>
+                        <option value="number">Number</option>
+                        <option value="checkbox">Checkbox</option>
+                      </select>
+                      <ng-container [ngSwitch]="property.type">
                         <input
-                          type="checkbox"
-                          class="h-4 w-4 rounded border-neutral-300 text-sky-500 focus:ring-sky-500"
+                          *ngSwitchCase="'date'"
+                          type="date"
+                          class="flex-1 rounded-md border border-neutral-200 px-2 py-1 text-sm text-neutral-600 focus:border-sky-300 focus:outline-none"
                           [(ngModel)]="property.value"
                           (ngModelChange)="onPropertyChange(property)"
                         />
-                        Checked
-                      </label>
-                      <input
-                        *ngSwitchDefault
-                        class="flex-1 rounded-md border border-neutral-200 px-2 py-1 text-sm text-neutral-600 focus:border-sky-300 focus:outline-none"
-                        [(ngModel)]="property.value"
-                        (ngModelChange)="onPropertyChange(property)"
-                      />
-                    </ng-container>
+                        <input
+                          *ngSwitchCase="'number'"
+                          type="number"
+                          class="flex-1 rounded-md border border-neutral-200 px-2 py-1 text-sm text-neutral-600 focus:border-sky-300 focus:outline-none"
+                          [(ngModel)]="property.value"
+                          (ngModelChange)="onPropertyChange(property)"
+                        />
+                        <label *ngSwitchCase="'checkbox'" class="flex items-center gap-2 text-sm text-neutral-600">
+                          <input
+                            type="checkbox"
+                            class="h-4 w-4 rounded border-neutral-300 text-sky-500 focus:ring-sky-500"
+                            [(ngModel)]="property.value"
+                            (ngModelChange)="onPropertyChange(property)"
+                          />
+                          Checked
+                        </label>
+                        <input
+                          *ngSwitchDefault
+                          class="flex-1 rounded-md border border-neutral-200 px-2 py-1 text-sm text-neutral-600 focus:border-sky-300 focus:outline-none"
+                          [(ngModel)]="property.value"
+                          (ngModelChange)="onPropertyChange(property)"
+                        />
+                      </ng-container>
+                    </div>
+                  </ng-container>
+                  <ng-template #systemPropertyDisplay>
+                    <div class="mt-2 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm font-medium text-neutral-700">
+                      {{ property.value | date: 'medium' }}
+                    </div>
+                  </ng-template>
+                </div>
+              </div>
+              <div class="relative mt-4">
+                <button
+                  #propertyTrigger
+                  type="button"
+                  class="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-neutral-300 bg-white/70 px-3 py-2 text-sm text-neutral-500 transition hover:border-sky-300 hover:text-sky-600"
+                  (click)="addProperty()"
+                  [attr.aria-expanded]="propertyMenuOpen"
+                >
+                  + Add property
+                </button>
+                <div
+                  *ngIf="propertyMenuOpen"
+                  #propertyMenu
+                  class="absolute left-0 z-20 mt-2 w-full min-w-[240px] rounded-xl border border-neutral-200 bg-white/95 p-3 text-sm text-neutral-600 shadow-xl"
+                >
+                  <div class="text-xs uppercase tracking-wide text-neutral-400">Quick add</div>
+                  <div class="mt-2 space-y-2">
+                    <button
+                      *ngFor="let template of propertyTemplates"
+                      type="button"
+                      class="flex w-full items-start gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-left transition hover:border-sky-300 hover:bg-sky-50"
+                      (click)="addPropertyFromTemplate(template)"
+                    >
+                      <div class="flex-1">
+                        <div class="text-sm font-medium text-neutral-700">{{ template.label }}</div>
+                        <div class="text-xs text-neutral-400">{{ template.description }}</div>
+                      </div>
+                    </button>
                   </div>
                 </div>
               </div>
-              <button
-                type="button"
-                class="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-neutral-300 bg-white/70 px-3 py-2 text-sm text-neutral-500 transition hover:border-sky-300 hover:text-sky-600"
-                (click)="addProperty()"
-              >
-                + Add property
-              </button>
             </div>
 
             <div class="rounded-xl border border-neutral-200 bg-white p-4 text-sm text-neutral-600 shadow-sm surface-card">

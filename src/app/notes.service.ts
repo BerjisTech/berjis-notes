@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, Subject } from 'rxjs';
 import { BookmarkPreview, NoteDatabase, NoteDatabaseColumn, NoteDatabaseRow } from './editor/editor.types';
 
 export type NoteStatus = 'active' | 'archived' | 'deleted';
@@ -36,11 +36,14 @@ export class NotesService {
   private cache: Record<string, Note> = {};
   private databaseCache = new Map<string, NoteDatabase>();
   private preferRemote = true;
+  private noteUpdates = new Subject<Note>();
   // Sync status
   syncMode: 'remote' | 'local' = 'remote';
   isSaving = false;
   lastSavedAt: string | null = null;
   lastError: string | null = null;
+
+  noteChanges$ = this.noteUpdates.asObservable();
 
   constructor(private http: HttpClient) {
     this.load();
@@ -130,10 +133,11 @@ export class NotesService {
         this.cache[saved.id] = saved;
         this.persist();
         this.endSave();
+        this.emitNoteChange(saved);
         return saved;
       } catch (e) { this.endSave(e); this.switchToLocal(e); }
     }
-    this.cache[id] = note; this.persist(); return note;
+    this.cache[id] = note; this.persist(); this.emitNoteChange(note); return note;
   }
 
   /** Save a note if it has any content (title, content HTML, or todos). */
@@ -155,24 +159,24 @@ export class NotesService {
         }, { withCredentials: true }));
         const saved: Note = res.data;
         this.preferRemote = true; this.syncMode = 'remote'; this.lastError = null;
-        this.cache[saved.id] = saved; this.persist(); this.endSave();
+        this.cache[saved.id] = saved; this.persist(); this.endSave(); this.emitNoteChange(saved);
         return saved;
       } catch (e) { this.endSave(e); this.switchToLocal(e); }
     }
-    note.updatedAt = this.now(); this.cache[note.id] = { ...note }; this.persist(); return note;
+    note.updatedAt = this.now(); this.cache[note.id] = { ...note }; this.persist(); this.emitNoteChange(this.cache[note.id]); return note;
   }
 
   async archive(id: string) {
     if (this.preferRemote) {
       try { this.beginSave(); await firstValueFrom(this.http.post(`${API_BASE}/v1/notes/${id}/archive`, {}, { withCredentials: true })); this.endSave(); } catch (e) { this.endSave(e); this.switchToLocal(e); }
     }
-    const n = this.cache[id]; if (n) { n.status = 'archived'; n.updatedAt = this.now(); this.persist(); }
+    const n = this.cache[id]; if (n) { n.status = 'archived'; n.updatedAt = this.now(); this.persist(); this.emitNoteChange({ ...n }); }
   }
   async restore(id: string) {
     if (this.preferRemote) {
       try { this.beginSave(); await firstValueFrom(this.http.post(`${API_BASE}/v1/notes/${id}/restore`, {}, { withCredentials: true })); this.endSave(); } catch (e) { this.endSave(e); this.switchToLocal(e); }
     }
-    const n = this.cache[id]; if (n) { n.status = 'active'; n.updatedAt = this.now(); this.persist(); }
+    const n = this.cache[id]; if (n) { n.status = 'active'; n.updatedAt = this.now(); this.persist(); this.emitNoteChange({ ...n }); }
   }
   async softDelete(id: string) {
     if (this.preferRemote) {
@@ -192,6 +196,7 @@ export class NotesService {
       this.persist();
     }
     this.evictDatabasesForNote(id);
+    if (n) this.emitNoteChange({ ...n });
   }
 
   private MIGRATION_FLAG = 'berjis-notes-migrated-v1';
@@ -356,7 +361,7 @@ export class NotesService {
       .map(n => ({
         id: n.id,
         title: n.title || 'Untitled',
-        snippet: (n.content || '').slice(0, 160),
+        snippet: this.previewContent(n.content, 160) || (n.title || 'Untitled'),
         updatedAt: n.updatedAt,
       }));
     return fallback;
@@ -479,5 +484,17 @@ export class NotesService {
   private stripHtml(html: string): string {
     if (!html) return '';
     return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+
+  previewContent(raw?: string, limit = 120): string {
+    if (!raw) return '';
+    const text = this.stripFormatting(raw);
+    if (!text) return '';
+    const trimmed = text.slice(0, limit).trim();
+    return text.length > limit ? `${trimmed}…` : trimmed;
+  }
+
+  private emitNoteChange(note: Note) {
+    this.noteUpdates.next({ ...note });
   }
 }

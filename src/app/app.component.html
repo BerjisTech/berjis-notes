@@ -115,7 +115,7 @@
             <div class="text-xs text-neutral-400 whitespace-nowrap">{{ note.updatedAt | date: 'MMM d, h:mm a' }}</div>
           </div>
           <div class="mt-1 text-xs text-neutral-500">
-            {{ note.content ? (note.content | slice: 0:120) : 'Draft content' }}
+            {{ preview(note) }}
           </div>
         </button>
       </ng-container>

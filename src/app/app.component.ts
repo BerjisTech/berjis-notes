@@ -41,6 +41,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
   activeNote: Note | null = null;
   private routerSub?: Subscription;
+  private noteChangesSub?: Subscription;
 
   @ViewChildren('searchBox') searchBoxes?: QueryList<ElementRef<HTMLInputElement>>;
 
@@ -51,11 +52,19 @@ export class AppComponent implements OnInit, OnDestroy {
     this.routerSub = this.router.events
       .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
       .subscribe(() => this.resolveActiveNote());
+    this.noteChangesSub = this.notes.noteChanges$.subscribe((note) => {
+      if (!note) return;
+      this.insertOrUpdate(note);
+      if (this.activeNote?.id === note.id) {
+        this.activeNote = { ...this.activeNote, ...note };
+      }
+    });
     this.resolveActiveNote();
   }
 
   ngOnDestroy(): void {
     this.routerSub?.unsubscribe();
+    this.noteChangesSub?.unsubscribe();
     if (this.searchDebounce) window.clearTimeout(this.searchDebounce);
   }
 
@@ -235,6 +244,12 @@ export class AppComponent implements OnInit, OnDestroy {
 
   private sortByUpdated(list: Note[]): Note[] {
     return [...list].sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+  }
+
+  preview(note: Note): string {
+    const snippet = this.notes.previewContent(note.content, 120);
+    if (snippet) return snippet;
+    return note.title || 'Untitled note';
   }
 
   // Sync status bindings

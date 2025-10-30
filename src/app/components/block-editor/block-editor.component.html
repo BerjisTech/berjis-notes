@@ -13,7 +13,7 @@
 
   <div class="flex flex-col gap-3">
     <div
-      class="block-row relative flex items-stretch gap-3 rounded-lg border border-transparent bg-white/70 px-3 py-2 transition hover:border-neutral-200 hover:bg-white/95"
+      class="block-row relative flex flex-col items-stretch gap-3 rounded-lg border border-transparent bg-white/70 px-3 py-2 transition hover:border-neutral-200 hover:bg-white/95"
       *ngFor="let block of blocks; trackBy: trackBlock"
       draggable="true"
       (dragstart)="onDragStart($event, block)"
@@ -21,7 +21,7 @@
       (dragleave)="onDragLeave($event)"
       (drop)="onDrop($event, block)"
     >
-      <div class="flex flex-col items-center gap-2 pt-1">
+      <div class="flex items-center gap-2 pt-1">
         <button
           type="button"
           class="opacity-0 transition hover-controls text-neutral-400 hover:text-neutral-700"
@@ -31,6 +31,7 @@
         </button>
         <select
           class="hidden md:block rounded-md border border-neutral-200 bg-neutral-50 px-1 py-0.5 text-xs text-neutral-500 focus:border-neutral-400 focus:outline-none"
+          name="block_{{block.type}}"
           [(ngModel)]="block.type"
           (ngModelChange)="transformBlock(block, $event)"
         >
@@ -84,7 +85,7 @@
           </div>
         </div>
 
-        <div *ngSwitchCase="'divider'" class="flex-1 self-center">
+        <div *ngSwitchCase="'divider'" class="flex-1">
           <div class="h-px w-full bg-gradient-to-r from-transparent via-neutral-300 to-transparent"></div>
         </div>
 
