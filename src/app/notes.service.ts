@@ -111,11 +111,19 @@ export class NotesService {
   async create(initial?: Partial<Note>): Promise<Note> {
     const id = initial?.id || this.uuid();
     const now = this.now();
+    const incomingTodos = initial?.todos;
+    const todos = Array.isArray(incomingTodos) ? [...incomingTodos] : [];
+    const content = initial?.content ?? '';
+    const trimmedTitle = (initial?.title ?? '').trim();
+    const hasTitle = trimmedTitle.length > 0;
+    const hasContent = !!content && this.stripFormatting(content).trim().length > 0;
+    const hasTodos = todos.some((todo) => typeof todo?.text === 'string' && todo.text.trim().length > 0);
+    const seededTitle = hasTitle ? trimmedTitle : (!hasContent && !hasTodos ? 'Untitled note' : '');
     const note: Note = {
       id,
-      title: initial?.title?.trim() || '',
-      content: initial?.content || '',
-      todos: initial?.todos || [],
+      title: seededTitle,
+      content,
+      todos,
       status: initial?.status || 'active',
       createdAt: now,
       updatedAt: now,
@@ -124,7 +132,7 @@ export class NotesService {
       try {
         this.beginSave();
         const res = await firstValueFrom(this.http.post<any>(`${API_BASE}/v1/notes`, {
-          title: note.title || undefined,
+          title: note.title?.trim() || undefined,
           content: note.content || undefined,
           todos: note.todos && note.todos.length ? note.todos : undefined,
         }, { withCredentials: true }));

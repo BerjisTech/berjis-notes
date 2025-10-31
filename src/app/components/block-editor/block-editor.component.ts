@@ -331,6 +331,51 @@ export class BlockEditorComponent implements AfterViewInit, OnDestroy, OnChanges
     this.updateSlashState(block);
   }
 
+  onPaste(event: ClipboardEvent, block: EditorBlock) {
+    if (block.type === 'code') return; // allow native multi-line paste in code blocks
+    const text = event.clipboardData?.getData('text/plain') ?? '';
+    if (!text) return;
+    event.preventDefault();
+    const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+    if (!lines.length) return;
+    const blockEl = this.getBlockElement(block.id);
+    let selection = window.getSelection();
+    if (!blockEl) return;
+    if (!selection || selection.rangeCount === 0 || !blockEl.contains(selection.getRangeAt(0).startContainer)) {
+      this.focusBlock(block.id);
+      selection = window.getSelection();
+    }
+    const range = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+    if (range) {
+      range.deleteContents();
+      const firstText = document.createTextNode(lines[0]);
+      range.insertNode(firstText);
+      range.setStartAfter(firstText);
+      range.collapse(true);
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+    } else {
+      document.execCommand('insertText', false, lines[0]);
+    }
+    block.html = blockEl.innerHTML;
+    let referenceBlock = block;
+    for (let i = 1; i < lines.length; i++) {
+      const newBlock = createBlock('paragraph');
+      newBlock.html = this.escapeHtml(lines[i]);
+      this.insertBlockAfter(referenceBlock, newBlock);
+      referenceBlock = newBlock;
+    }
+    // ensure block content reflects first line post insertion
+    const updatedEl = this.getBlockElement(block.id);
+    if (updatedEl) {
+      block.html = updatedEl.innerHTML;
+    }
+    const focusId = lines.length > 1 ? referenceBlock.id : block.id;
+    this.closeSlash();
+    this.scheduleEmit();
+    queueMicrotask(() => this.focusBlock(focusId));
+  }
+
   handleCheckboxChange(block: EditorBlock, checked: boolean) {
     block.checked = checked;
     this.scheduleEmit();
@@ -565,6 +610,16 @@ export class BlockEditorComponent implements AfterViewInit, OnDestroy, OnChanges
 
   getBlockElement(id: string): HTMLElement | undefined {
     return this.blockContentEls.find((ref) => ref.nativeElement.dataset['blockId'] === id)?.nativeElement;
+  }
+
+  onEditorSurfaceClick(event: MouseEvent) {
+    const target = event.target as HTMLElement | null;
+    if (!target) return;
+    if (event.currentTarget !== event.target) return;
+    const newBlock = createBlock('paragraph');
+    this.blocks.push(newBlock);
+    this.scheduleEmit();
+    queueMicrotask(() => this.focusBlock(newBlock.id));
   }
 
   focusBlock(blockId: string) {
@@ -856,6 +911,15 @@ export class BlockEditorComponent implements AfterViewInit, OnDestroy, OnChanges
 
   toggleFormat(command: string, value?: string) {
     document.execCommand(command, false, value ?? undefined);
+  }
+
+  private escapeHtml(value: string): string {
+    return value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 }
 

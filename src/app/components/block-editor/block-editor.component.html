@@ -12,11 +12,15 @@
     <span class="ml-auto text-xs text-slate-300/80">Type "/" for commands</span>
   </div>
 
-  <div class="flex flex-col mx-[30px]">
+  <div
+    class="flex flex-col mx-[30px] pb-12"
+    data-editor-root
+    (click)="onEditorSurfaceClick($event)"
+  >
     <div class="group block-row relative flex items-stretch gap-3 rounded-xl px-4 py-3 transition"
       *ngFor="let block of blocks; trackBy: trackBlock" draggable="true" (dragstart)="onDragStart($event, block)"
       (dragover)="onDragOver($event, block)" (dragleave)="onDragLeave($event)" (drop)="onDrop($event, block)">
-      <div class="relative flex items-center pt-1">
+      <div class="group relative flex items-center pt-1">
         <div
           class="helper_icons absolute left-[-72px] top-0 hidden h-full items-center gap-1 px-2 text-slate-400/80 group-hover:flex bg-parent z-1">
           <button type="button" class="hover-controls cursor-pointer text-slate-400/80 transition hover:text-red-300"
@@ -34,7 +38,7 @@
           </button>
         </div>
         <button type="button"
-          class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-700/70 bg-slate-900/80 text-xs font-semibold text-slate-200 transition hover:border-amber-300 hover:text-amber-300 focus:outline-none"
+          class="opacity-0 group-hover:opacity-100 inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-700/70 bg-slate-900/80 text-xs font-semibold text-slate-200 transition hover:border-amber-300 hover:text-amber-300 focus:outline-none"
           title="Change block type" [attr.aria-label]="'Block type: ' + getTypeLabel(block.type)"
           (click)="toggleTypeMenu(block)" data-block-type-trigger>
           {{ getTypeIcon(block.type) }}
@@ -65,7 +69,7 @@
             [checked]="block.checked" (change)="handleCheckboxChange(block, $any($event.target).checked)" />
           <div #blockContent class="flex-1 min-h-[24px] text-base text-slate-100" contenteditable="true"
             [attr.data-block-id]="block.id" [innerHTML]="block.html" (focus)="handleBlockFocus(block)"
-            (input)="handleInput($event, block)" (keydown)="onKeyDown($event, block)"></div>
+            (input)="handleInput($event, block)" (keydown)="onKeyDown($event, block)" (paste)="onPaste($event, block)"></div>
         </div>
 
         <div *ngSwitchCase="'code'"
@@ -156,34 +160,35 @@
         <div *ngSwitchCase="'heading-1'" class="flex-1">
           <div #blockContent class="min-h-[40px] text-3xl font-semibold tracking-tight text-white outline-none"
             contenteditable="true" [attr.data-block-id]="block.id" [innerHTML]="block.html"
-            (focus)="handleBlockFocus(block)" (input)="handleInput($event, block)" (keydown)="onKeyDown($event, block)">
+            (focus)="handleBlockFocus(block)" (input)="handleInput($event, block)" (keydown)="onKeyDown($event, block)"
+            (paste)="onPaste($event, block)">
           </div>
         </div>
 
         <div *ngSwitchCase="'heading-2'" class="flex-1">
           <div #blockContent class="min-h-[36px] text-2xl font-semibold text-white outline-none" contenteditable="true"
             [attr.data-block-id]="block.id" [innerHTML]="block.html" (focus)="handleBlockFocus(block)"
-            (input)="handleInput($event, block)" (keydown)="onKeyDown($event, block)"></div>
+            (input)="handleInput($event, block)" (keydown)="onKeyDown($event, block)" (paste)="onPaste($event, block)"></div>
         </div>
 
         <div *ngSwitchCase="'heading-3'" class="flex-1">
           <div #blockContent class="min-h-[32px] text-xl font-semibold text-white outline-none" contenteditable="true"
             [attr.data-block-id]="block.id" [innerHTML]="block.html" (focus)="handleBlockFocus(block)"
-            (input)="handleInput($event, block)" (keydown)="onKeyDown($event, block)"></div>
+            (input)="handleInput($event, block)" (keydown)="onKeyDown($event, block)" (paste)="onPaste($event, block)"></div>
         </div>
 
         <div *ngSwitchCase="'bulleted-list'" class="relative flex-1 pl-6">
           <div class="absolute left-0 top-2 text-lg text-slate-400">•</div>
           <div #blockContent class="min-h-[24px] text-base text-slate-100 outline-none" contenteditable="true"
             [attr.data-block-id]="block.id" [innerHTML]="block.html" (focus)="handleBlockFocus(block)"
-            (input)="handleInput($event, block)" (keydown)="onKeyDown($event, block)"></div>
+            (input)="handleInput($event, block)" (keydown)="onKeyDown($event, block)" (paste)="onPaste($event, block)"></div>
         </div>
 
         <div *ngSwitchCase="'numbered-list'" class="relative flex-1 pl-6">
           <div class="absolute left-0 top-2 text-sm font-medium text-slate-400">{{ getNumberIndex(block) }}.</div>
           <div #blockContent class="min-h-[24px] text-base text-slate-100 outline-none" contenteditable="true"
             [attr.data-block-id]="block.id" [innerHTML]="block.html" (focus)="handleBlockFocus(block)"
-            (input)="handleInput($event, block)" (keydown)="onKeyDown($event, block)"></div>
+            (input)="handleInput($event, block)" (keydown)="onKeyDown($event, block)" (paste)="onPaste($event, block)"></div>
         </div>
 
         <app-database-block *ngSwitchCase="'database'"
@@ -193,7 +198,8 @@
         <div *ngSwitchDefault class="flex-1">
           <div #blockContent class="min-h-[28px] text-base leading-relaxed text-slate-100 outline-none"
             contenteditable="true" [attr.data-block-id]="block.id" [innerHTML]="block.html"
-            (focus)="handleBlockFocus(block)" (input)="handleInput($event, block)" (keydown)="onKeyDown($event, block)">
+            (focus)="handleBlockFocus(block)" (input)="handleInput($event, block)" (keydown)="onKeyDown($event, block)"
+            (paste)="onPaste($event, block)">
           </div>
         </div>
       </ng-container>

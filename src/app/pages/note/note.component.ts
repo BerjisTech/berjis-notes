@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { BlockEditorComponent } from '../../components/block-editor/block-editor.component';
-import { EditorDocument } from '../../editor/editor.types';
+import { EditorDocument, EditorDocumentMeta } from '../../editor/editor.types';
 import { deserializeDocument, serializeDocument, createBlock } from '../../editor/editor.utils';
 import { Note, NotesService } from '../../notes.service';
 
@@ -473,15 +473,16 @@ export class NotePageComponent implements OnInit, OnDestroy {
   }
 
   private syncDocumentMeta() {
-    this.document = {
-      ...this.document,
-      meta: {
-        ...(this.document.meta ?? {}),
-        icon: this.pageIcon,
-        coverImage: this.coverImage ?? undefined,
-        properties: this.toMetaProperties(),
-      },
+    const nextMeta: EditorDocumentMeta = {
+      ...(this.document.meta ?? {}),
+      icon: this.pageIcon,
+      properties: this.toMetaProperties(),
     };
+    if (this.coverImage) {
+      nextMeta.coverImage = this.coverImage;
+    } else {
+      delete nextMeta.coverImage;
+    }
+    this.document.meta = nextMeta;
   }
 }
-
