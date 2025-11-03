@@ -1,8 +1,8 @@
-<div class="min-h-screen flex bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 text-slate-100">
+<div class="min-h-screen flex flex-col bg-app-gradient bg-app-gradient-animated text-[color:var(--color-text-primary)] dark:text-[color:var(--color-text-dark)]">
   <!-- Desktop sidebar -->
   <aside
     *ngIf="authed === true"
-    class="hidden lg:flex w-[22rem] flex-col border-r border-blue-900/60 bg-slate-900/70 backdrop-blur-xl shadow-[0_0_40px_rgba(14,25,71,0.45)]"
+    class="hidden lg:flex w-[22rem] flex-col border-r border-blue-900/30 bg-white/80 dark:bg-slate-900/70 backdrop-blur-xl shadow-[0_0_40px_var(--color-shadow-light)] dark:shadow-[0_0_40px_var(--color-shadow-dark)]"
   >
     <div class="px-6 py-6 border-b border-blue-900/60">
       <div class="text-[11px] uppercase tracking-[0.35em] text-blue-200/70">Workspace</div>
@@ -26,7 +26,7 @@
         <input
           #searchBox
           type="search"
-          class="w-full rounded-xl border border-slate-800/70 bg-slate-900/70 px-4 py-2.5 text-sm text-slate-100 shadow-inner shadow-slate-950/40 transition focus:border-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-300/40"
+          class="w-full rounded-xl border border-blue-900/30 dark:border-slate-800/70 bg-white/90 dark:bg-slate-900/70 px-4 py-2.5 text-sm text-slate-900 dark:text-slate-100 shadow-inner transition focus:border-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-300/40"
           placeholder="Search notes (Ctrl + K)"
           [ngModel]="searchTerm"
           (ngModelChange)="onSearchInput($event)"
@@ -34,7 +34,7 @@
         <button
           *ngIf="searchTerm"
           type="button"
-          class="absolute inset-y-0 right-3 my-auto rounded-full bg-slate-800/80 px-3 text-xs text-slate-300 hover:bg-slate-700"
+          class="absolute inset-y-0 right-3 my-auto rounded-full bg-slate-200/80 dark:bg-slate-800/80 px-3 text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700"
           (click)="clearSearch()"
         >
           Clear
@@ -49,7 +49,7 @@
           *ngFor="let result of searchResults"
           type="button"
           (click)="openResult(result)"
-          class="w-full rounded-lg border border-slate-800/70 bg-slate-900/70 px-4 py-3 text-left text-sm transition hover:border-amber-300/70 hover:bg-amber-400/10"
+          class="w-full rounded-lg border border-blue-900/30 dark:border-slate-800/70 bg-white/80 dark:bg-slate-900/70 px-4 py-3 text-left text-sm transition hover:border-amber-300/70 hover:bg-amber-100/30 dark:hover:bg-amber-400/10"
         >
           <div class="font-medium text-slate-100 truncate">{{ result.title || 'Untitled note' }}</div>
           <div class="mt-1 text-xs text-slate-300/80 truncate">{{ result.snippet }}</div>

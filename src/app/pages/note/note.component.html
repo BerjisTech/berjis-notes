@@ -1,4 +1,4 @@
-<div class="page-shell min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-100" [class.dark-mode]="darkMode">
+<div class="page-shell min-h-screen bg-app-gradient bg-app-gradient-animated text-[color:var(--color-text-primary)] dark:text-[color:var(--color-text-dark)]" [class.dark-mode]="darkMode">
   <div class="pb-20">
     <div class="relative">
       <div class="relative h-64 w-full overflow-hidden rounded-b-3xl border-b border-blue-900/40 shadow-[0_20px_60px_rgba(8,15,40,0.55)]">
@@ -15,7 +15,7 @@
           <button
             #coverTrigger
             type="button"
-            class="rounded-full border border-slate-700/70 bg-slate-900/70 px-5 py-2 text-sm font-medium text-slate-100 shadow-lg shadow-slate-950/40 transition hover:border-amber-300 hover:text-amber-300 disabled:cursor-not-allowed disabled:opacity-70"
+            class="rounded-full border border-blue-900/30 dark:border-slate-700/70 bg-white/80 dark:bg-slate-900/70 px-5 py-2 text-sm font-medium text-slate-900 dark:text-slate-100 shadow-lg transition hover:border-amber-300 hover:text-amber-600 dark:hover:text-amber-300 disabled:cursor-not-allowed disabled:opacity-70"
             (click)="setCover()"
             [disabled]="coverUploading"
           >
@@ -24,11 +24,11 @@
           <div
             *ngIf="coverMenuOpen"
             #coverMenu
-            class="absolute right-0 z-30 mt-3 w-72 rounded-2xl border border-slate-800/80 bg-slate-900/95 p-4 text-sm text-slate-200 shadow-[0_20px_55px_rgba(8,15,40,0.75)]"
+            class="absolute right-0 z-30 mt-3 w-72 rounded-2xl border border-blue-900/30 dark:border-slate-800/80 bg-white/95 dark:bg-slate-900/95 p-4 text-sm text-slate-700 dark:text-slate-200 shadow-[0_20px_55px_var(--color-shadow-light)] dark:shadow-[0_20px_55px_var(--color-shadow-dark)]"
           >
             <button
               type="button"
-              class="flex w-full items-center justify-between rounded-xl border border-slate-700/70 bg-slate-900/80 px-3 py-2 text-left text-sm font-medium text-slate-100 transition hover:border-amber-300 hover:text-amber-300"
+              class="flex w-full items-center justify-between rounded-xl border border-blue-900/30 dark:border-slate-700/70 bg-white/80 dark:bg-slate-900/80 px-3 py-2 text-left text-sm font-medium text-slate-900 dark:text-slate-100 transition hover:border-amber-300 hover:text-amber-700 dark:hover:text-amber-300"
               (click)="triggerCoverUpload()"
             >
               <span>Select from device</span>
@@ -39,7 +39,7 @@
               <button
                 *ngFor="let preset of coverLibrary"
                 type="button"
-                class="group overflow-hidden rounded-xl border border-slate-800/70 bg-slate-900/80 text-left transition hover:border-amber-300/70"
+                class="group overflow-hidden rounded-xl border border-blue-900/30 dark:border-slate-800/70 bg-white/80 dark:bg-slate-900/80 text-left transition hover:border-amber-300/70"
                 (click)="setCoverFromLibrary(preset.url)"
               >
                 <div class="h-24 w-full overflow-hidden">
@@ -61,7 +61,7 @@
         <button
           *ngIf="coverImage"
           type="button"
-          class="rounded-full border border-slate-700/70 bg-slate-900/60 px-4 py-2 text-sm text-slate-200 transition hover:border-red-400/70 hover:text-red-300"
+          class="rounded-full border border-blue-900/30 dark:border-slate-700/70 bg-white/80 dark:bg-slate-900/60 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 transition hover:border-red-400/70 hover:text-red-600 dark:hover:text-red-300"
           (click)="removeCover()"
           [disabled]="coverUploading"
         >
