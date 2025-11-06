@@ -142,6 +142,13 @@
             </button>
             <button
               type="button"
+              class="rounded-full border border-blue-500/60 bg-blue-500/10 px-4 py-2 text-blue-200 transition hover:border-blue-400 hover:text-blue-100"
+              (click)="openShare()"
+            >
+              Share
+            </button>
+            <button
+              type="button"
               class="rounded-full border border-red-500/60 bg-red-500/10 px-4 py-2 text-red-200 transition hover:border-red-400 hover:text-red-100"
               (click)="softDelete()"
             >
@@ -281,6 +288,35 @@
           </aside>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Share Modal -->
+<div *ngIf="shareOpen" class="fixed inset-0 bg-black/30 flex items-center justify-center z-[70000]">
+  <div class="bg-white rounded shadow w-[520px] p-4 text-slate-900">
+    <div class="flex items-center justify-between mb-2">
+      <div class="text-lg font-semibold">Share Note</div>
+      <button class="px-2 py-1 border rounded" (click)="shareOpen=false">Close</button>
+    </div>
+    <div class="flex gap-2">
+      <input class="flex-1 border rounded px-2 py-1 text-sm" placeholder="User ID (UUID)" [(ngModel)]="shareUserId" />
+      <select class="border rounded px-2 py-1 text-sm" [(ngModel)]="shareRole">
+        <option value="viewer">Viewer</option>
+        <option value="commenter">Commenter</option>
+        <option value="editor">Editor</option>
+      </select>
+      <button class="rounded bg-blue-600 text-white px-3 py-1 text-sm" (click)="addCollaborator()">Add</button>
+    </div>
+    <div class="mt-3 max-h-[240px] overflow-y-auto rounded border">
+      <div *ngFor="let r of shareRows" class="flex items-center justify-between border-b px-3 py-2 text-sm">
+        <div>
+          <div class="font-medium">{{ r.userId }}</div>
+          <div class="text-xs text-slate-500">{{ r.role | titlecase }}</div>
+        </div>
+        <button class="rounded border px-2 py-1 text-xs" (click)="removeCollaborator(r.userId)">Remove</button>
+      </div>
+      <div *ngIf="!shareRows.length" class="px-3 py-2 text-xs text-slate-500">No collaborators yet.</div>
     </div>
   </div>
 </div>

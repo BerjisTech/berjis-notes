@@ -55,6 +55,11 @@ export class NotePageComponent implements OnInit, OnDestroy {
   coverMenuOpen = false;
   coverUploading = false;
   coverUploadError: string | null = null;
+  // Share modal
+  shareOpen = false;
+  shareRows: { userId: string; role: 'viewer'|'commenter'|'editor' }[] = [];
+  shareUserId = '';
+  shareRole: 'viewer'|'commenter'|'editor' = 'viewer';
 
   readonly propertyTemplates: PropertyTemplate[] = [
     { label: 'Text', type: 'text', description: 'Plain text value' },
@@ -114,6 +119,13 @@ export class NotePageComponent implements OnInit, OnDestroy {
     this.routeSub?.unsubscribe();
     this.noteSub?.unsubscribe();
   }
+
+  // Share helpers
+  openShare(){ this.shareOpen = true; this.loadCollaborators(); }
+  private get id(): string | null { return this.note?.id ?? null; }
+  async loadCollaborators(){ const id=this.id; if(!id){ this.shareRows=[]; return; } try { const res=await fetch(`/v1/notes/${encodeURIComponent(id)}/collaborators`, { credentials:'include' }); const j=await res.json(); const rows=(j?.data||[]) as any[]; this.shareRows = rows.map(r => ({ userId: r.userId||r.user_id, role: (r.role||'viewer') })); } catch { this.shareRows=[]; } }
+  async addCollaborator(){ const id=this.id; if(!id) return; const userId=this.shareUserId.trim(); if(!userId) return; const role=this.shareRole; await fetch(`/v1/notes/${encodeURIComponent(id)}/collaborators`, { method:'POST', credentials:'include', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ userId, role }) }); this.shareUserId=''; await this.loadCollaborators(); }
+  async removeCollaborator(uid: string){ const id=this.id; if(!id) return; await fetch(`/v1/notes/${encodeURIComponent(id)}/collaborators?user_id=${encodeURIComponent(uid)}`, { method:'DELETE', credentials:'include' }); await this.loadCollaborators(); }
 
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent) {

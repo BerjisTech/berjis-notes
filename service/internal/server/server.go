@@ -66,9 +66,10 @@ func New(opts Options) *fiber.App {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"success": false})
 		}
 		statuses := c.Query("status", "active")
-		q := `SELECT id, user_id, title, content, COALESCE(todos,'null'::jsonb) AS todos, status, created_at, updated_at FROM notes 
-              WHERE user_id=$1 AND status = ANY(string_to_array($2, ',')) 
-              ORDER BY updated_at DESC`
+		q := `SELECT id, user_id, title, content, COALESCE(todos,'null'::jsonb) AS todos, status, created_at, updated_at FROM notes n
+              WHERE (n.user_id=$1 OR EXISTS (SELECT 1 FROM note_collaborators c WHERE c.note_id=n.id AND c.user_id=$1))
+                AND n.status = ANY(string_to_array($2, ',')) 
+              ORDER BY n.updated_at DESC`
 		rows := []Note{}
 		if err := opts.DB.Select(&rows, q, uid, statuses); err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"success": false, "message": err.Error()})
@@ -87,7 +88,8 @@ func New(opts Options) *fiber.App {
 		}
 		id := c.Params("id")
 		var n Note
-		if err := opts.DB.Get(&n, `SELECT id, user_id, title, content, COALESCE(todos,'null'::jsonb) AS todos, status, created_at, updated_at FROM notes WHERE id=$1 AND user_id=$2`, id, uid); err != nil {
+		if err := opts.DB.Get(&n, `SELECT id, user_id, title, content, COALESCE(todos,'null'::jsonb) AS todos, status, created_at, updated_at FROM notes n
+            WHERE n.id=$1 AND (n.user_id=$2 OR EXISTS (SELECT 1 FROM note_collaborators c WHERE c.note_id=n.id AND c.user_id=$2))`, id, uid); err != nil {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"success": false, "message": err.Error()})
 		}
 		return c.JSON(fiber.Map{"success": true, "data": n})
@@ -149,7 +151,9 @@ func New(opts Options) *fiber.App {
             todos = NULLIF($3,'null'::jsonb),
             status = COALESCE(NULLIF($4,''), status),
             updated_at = now()
-            WHERE id=$5 AND user_id=$6
+            WHERE id=$5 AND (
+              user_id=$6 OR EXISTS(SELECT 1 FROM note_collaborators nc WHERE nc.note_id=$5 AND nc.user_id=$6 AND nc.role='editor')
+            )
             RETURNING id, user_id, title, content, COALESCE(todos,'null'::jsonb) AS todos, status, created_at, updated_at`,
 			optStr(in.Title), optStr(in.Content), defaultJSON(in.Todos), optStr(in.Status), id, uid); err != nil {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"success": false, "message": err.Error()})
@@ -170,6 +174,87 @@ func New(opts Options) *fiber.App {
 		return setStatus(opts, c, "deleted")
 	})
 
+	// Collaborators (owner-managed)
+	app.Get("/v1/notes/:id/collaborators", func(c *fiber.Ctx) error {
+		if opts.DB == nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"success": false})
+		}
+		uid, err := getUserID(opts, c)
+		if err != nil {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"success": false})
+		}
+		id := c.Params("id")
+		var owner string
+		if err := opts.DB.Get(&owner, `SELECT user_id FROM notes WHERE id=$1`, id); err != nil {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"success": false})
+		}
+		if owner != uid {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"success": false})
+		}
+		type row struct {
+			UserID, Role, InvitedBy string
+			CreatedAt               time.Time
+		}
+		rows := []row{}
+		_ = opts.DB.Select(&rows, `SELECT user_id, role, invited_by, created_at FROM note_collaborators WHERE note_id=$1 ORDER BY created_at DESC`, id)
+		return c.JSON(fiber.Map{"success": true, "data": rows})
+	})
+	app.Post("/v1/notes/:id/collaborators", func(c *fiber.Ctx) error {
+		if opts.DB == nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"success": false})
+		}
+		uid, err := getUserID(opts, c)
+		if err != nil {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"success": false})
+		}
+		id := c.Params("id")
+		var owner string
+		if err := opts.DB.Get(&owner, `SELECT user_id FROM notes WHERE id=$1`, id); err != nil {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"success": false})
+		}
+		if owner != uid {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"success": false})
+		}
+		var body struct{ UserID, Role string }
+		if err := c.BodyParser(&body); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"success": false})
+		}
+		role := strings.ToLower(strings.TrimSpace(body.Role))
+		if body.UserID == "" || (role != "viewer" && role != "commenter" && role != "editor") {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"success": false})
+		}
+		if _, err := opts.DB.Exec(`INSERT INTO note_collaborators (note_id, user_id, role, invited_by) VALUES ($1,$2,$3,$4)
+		  ON CONFLICT (note_id, user_id) DO UPDATE SET role=EXCLUDED.role, updated_at=now()`, id, body.UserID, role, uid); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"success": false, "message": err.Error()})
+		}
+		return c.JSON(fiber.Map{"success": true})
+	})
+	app.Delete("/v1/notes/:id/collaborators", func(c *fiber.Ctx) error {
+		if opts.DB == nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"success": false})
+		}
+		uid, err := getUserID(opts, c)
+		if err != nil {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"success": false})
+		}
+		id := c.Params("id")
+		var owner string
+		if err := opts.DB.Get(&owner, `SELECT user_id FROM notes WHERE id=$1`, id); err != nil {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"success": false})
+		}
+		if owner != uid {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"success": false})
+		}
+		userID := strings.TrimSpace(c.Query("user_id"))
+		if userID == "" {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"success": false})
+		}
+		if _, err := opts.DB.Exec(`DELETE FROM note_collaborators WHERE note_id=$1 AND user_id=$2`, id, userID); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"success": false, "message": err.Error()})
+		}
+		return c.JSON(fiber.Map{"success": true})
+	})
+
 	return app
 }
 
@@ -183,7 +268,9 @@ func setStatus(opts Options, c *fiber.Ctx, status string) error {
 	}
 	id := c.Params("id")
 	var n Note
-	if err := opts.DB.Get(&n, `UPDATE notes SET status=$1, updated_at=now() WHERE id=$2 AND user_id=$3
+	if err := opts.DB.Get(&n, `UPDATE notes SET status=$1, updated_at=now() WHERE id=$2 AND (
+        user_id=$3 OR EXISTS(SELECT 1 FROM note_collaborators nc WHERE nc.note_id=$2 AND nc.user_id=$3 AND nc.role='editor')
+      )
         RETURNING id, user_id, title, content, COALESCE(todos,'null'::jsonb) AS todos, status, created_at, updated_at`, status, id, uid); err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"success": false, "message": err.Error()})
 	}

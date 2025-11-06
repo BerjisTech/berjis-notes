@@ -1,5 +1,11 @@
+@import "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined";
 @import url(https://fonts.googleapis.com/css?family=Inter:300,400,500,600,700);
 @import "tailwindcss";
+
+
+
+
+
 
 body {
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -157,9 +163,6 @@ textarea {
     grid-template-columns: minmax(0, 3fr) minmax(0, 1.2fr);
   }
 }
-@import "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined";
-@import "tailwindcss";
-@custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
   --color-bg-light-start: #eff6ff; --color-bg-light-end: #f8fafc;
