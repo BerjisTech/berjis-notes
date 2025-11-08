@@ -311,7 +311,7 @@ func defaultJSON(j json.RawMessage) json.RawMessage {
 var authClient = &http.Client{Timeout: 3 * time.Second}
 
 func getUserID(opts Options, c *fiber.Ctx) (string, error) {
-	req, _ := http.NewRequest("GET", strings.TrimRight(opts.CoreAPIBase, "/")+"/v1/auth/verify", nil)
+	req, _ := http.NewRequest(http.MethodPost, strings.TrimRight(opts.CoreAPIBase, "/")+"/v1/auth/verify", nil)
 	if v := c.Get("Authorization"); v != "" {
 		req.Header.Set("Authorization", v)
 	}
