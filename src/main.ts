@@ -6,6 +6,8 @@ import { AppComponent } from './app/app.component';
 import { authTokenInterceptor } from './app/auth-token.interceptor';
 import { HomePageComponent } from './app/pages/home/home.component';
 import { authGuard } from './app/auth.guard';
+import { CORE_AUTH_API_BASE } from '@berjis/angular-auth';
+import { environment } from './environments/environment';
 
 const routes: Routes = [
   { path: '', component: HomePageComponent },
@@ -14,5 +16,9 @@ const routes: Routes = [
 ];
 
 bootstrapApplication(AppComponent, {
-  providers: [provideHttpClient(withInterceptors([authTokenInterceptor])), provideRouter(routes)]
+  providers: [
+    provideHttpClient(withInterceptors([authTokenInterceptor])),
+    provideRouter(routes),
+    { provide: CORE_AUTH_API_BASE, useValue: environment.apiBase }
+  ]
 }).catch(err => console.error(err));

@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom, Subject } from 'rxjs';
+import { environment } from '../environments/environment';
 import { BookmarkPreview, NoteDatabase, NoteDatabaseColumn, NoteDatabaseRow } from './editor/editor.types';
 
 export type NoteStatus = 'active' | 'archived' | 'deleted';
@@ -29,7 +30,7 @@ export interface NoteSearchResult {
 }
 
 const STORAGE_KEY = 'berjis-notes';
-const API_BASE = 'https://notes-api.berjis.tech';
+const API_BASE = normalizeBase(environment.notesApiBase || 'https://notes-api.berjis.tech');
 
 @Injectable({ providedIn: 'root' })
 export class NotesService {
@@ -505,4 +506,9 @@ export class NotesService {
   private emitNoteChange(note: Note) {
     this.noteUpdates.next({ ...note });
   }
+}
+
+function normalizeBase(base: string): string {
+  if (!base) return '';
+  return base.replace(/\/+$/, '');
 }

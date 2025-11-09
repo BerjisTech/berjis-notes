@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
-import { ApiService } from '../../api.service';
+import { CoreAuthService } from '@berjis/angular-auth';
 import { NotesService, Note } from '../../notes.service';
 
 @Component({
@@ -16,7 +16,7 @@ export class HomePageComponent {
   loading = false;
   error: string | null = null;
 
-  constructor(private api: ApiService, private router: Router, private notes: NotesService) {
+  constructor(private auth: CoreAuthService, private router: Router, private notes: NotesService) {
     void this.init();
   }
 
@@ -24,8 +24,8 @@ export class HomePageComponent {
     this.loading = true;
     this.error = null;
     try {
-      const res = await this.api.ensureAuth();
-      this.authed = !!res?.data?.valid;
+      const session = await this.auth.ensureAuth({ maxAgeMs: 1500 });
+      this.authed = !!session?.valid;
       if (this.authed) {
         this.recents = await this.notes.list(['active']);
       } else {

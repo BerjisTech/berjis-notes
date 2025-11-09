@@ -12,7 +12,7 @@ import { FormsModule } from '@angular/forms';
 import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
-import { ApiService } from './api.service';
+import { CoreAuthService } from '@berjis/angular-auth';
 import { Note, NoteSearchResult, NoteStatus, NotesService } from './notes.service';
 
 type NoteBuckets = Record<NoteStatus, Note[]>;
@@ -42,12 +42,20 @@ export class AppComponent implements OnInit, OnDestroy {
   activeNote: Note | null = null;
   private routerSub?: Subscription;
   private noteChangesSub?: Subscription;
+  private authUnsub?: () => void;
 
   @ViewChildren('searchBox') searchBoxes?: QueryList<ElementRef<HTMLInputElement>>;
 
-  constructor(private router: Router, private api: ApiService, public notes: NotesService) {}
+  constructor(private router: Router, private auth: CoreAuthService, public notes: NotesService) {}
 
   async ngOnInit(): Promise<void> {
+    this.authUnsub = this.auth.onSessionChange((session) => {
+      const wasAuthed = this.authed;
+      this.authed = session.valid;
+      if (!session.valid && wasAuthed) {
+        this.resetState();
+      }
+    });
     await this.ensureSession();
     this.routerSub = this.router.events
       .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
@@ -65,13 +73,14 @@ export class AppComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.routerSub?.unsubscribe();
     this.noteChangesSub?.unsubscribe();
+    this.authUnsub?.();
     if (this.searchDebounce) window.clearTimeout(this.searchDebounce);
   }
 
   private async ensureSession() {
     try {
-      const res = await this.api.ensureAuth();
-      this.authed = !!res?.data?.valid;
+      const session = await this.auth.ensureAuth({ maxAgeMs: 1500 });
+      this.authed = !!session?.valid;
       if (this.authed) {
         await this.refreshNotes('active', true);
       } else {

@@ -2,11 +2,13 @@ package server
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
+	coreauth "github.com/berjistech/berjis-ecosystem/shared/coreauth"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/jmoiron/sqlx"
@@ -19,6 +21,8 @@ type Options struct {
 	UploadDir      string
 	AssetsBaseURL  string
 	UploadMaxBytes int64
+	AuthVerifier   *coreauth.Verifier
+	HTTPClient     *http.Client
 }
 
 type Note struct {
@@ -34,6 +38,20 @@ type Note struct {
 
 func New(opts Options) *fiber.App {
 	app := fiber.New()
+	if opts.HTTPClient == nil {
+		opts.HTTPClient = &http.Client{Timeout: 5 * time.Second}
+	}
+	coreAPIBase := strings.TrimSpace(opts.CoreAPIBase)
+	if coreAPIBase != "" {
+		if v, err := coreauth.NewVerifier(coreauth.Config{
+			CoreAPIBase: coreAPIBase,
+			HTTPClient:  opts.HTTPClient,
+		}); err != nil {
+			fmt.Printf("warn: notes coreauth verifier init failed: %v\n", err)
+		} else {
+			opts.AuthVerifier = v
+		}
+	}
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:     opts.AllowedOrigins,
 		AllowMethods:     "GET,POST,PUT,PATCH,DELETE,OPTIONS",
@@ -308,17 +326,43 @@ func defaultJSON(j json.RawMessage) json.RawMessage {
 	return j
 }
 
-var authClient = &http.Client{Timeout: 3 * time.Second}
-
 func getUserID(opts Options, c *fiber.Ctx) (string, error) {
-	req, _ := http.NewRequest(http.MethodPost, strings.TrimRight(opts.CoreAPIBase, "/")+"/v1/auth/verify", nil)
-	if v := c.Get("Authorization"); v != "" {
-		req.Header.Set("Authorization", v)
+	authz := strings.TrimSpace(c.Get("Authorization"))
+	token := bearerToken(authz)
+	if token != "" && opts.AuthVerifier != nil {
+		if claims, err := opts.AuthVerifier.Verify(token); err == nil {
+			if uuid := strings.TrimSpace(claims.UUID); uuid != "" {
+				return uuid, nil
+			}
+		} else {
+			if errors.Is(err, coreauth.ErrTokenInvalid) || errors.Is(err, coreauth.ErrTokenExpired) || errors.Is(err, coreauth.ErrTokenMissing) {
+				return "", fiber.ErrUnauthorized
+			}
+			if !errors.Is(err, coreauth.ErrJWKSUnavailable) {
+				fmt.Printf("warn: notes coreauth verify failed: %v\n", err)
+			}
+		}
+	}
+	base := strings.TrimSpace(opts.CoreAPIBase)
+	if base == "" {
+		return "", fiber.ErrUnauthorized
+	}
+	client := opts.HTTPClient
+	if client == nil {
+		client = &http.Client{Timeout: 5 * time.Second}
+	}
+	req, _ := http.NewRequest(http.MethodPost, strings.TrimRight(base, "/")+"/v1/auth/verify", nil)
+	if authz != "" {
+		req.Header.Set("Authorization", authz)
 	}
 	if v := c.Get("Cookie"); v != "" {
 		req.Header.Set("Cookie", v)
 	}
-	resp, err := authClient.Do(req)
+	if v := c.Get("Origin"); v != "" {
+		req.Header.Set("Origin", v)
+	}
+	req.Header.Set("Accept", "application/json")
+	resp, err := client.Do(req)
 	if err != nil {
 		return "", err
 	}
@@ -331,22 +375,32 @@ func getUserID(opts Options, c *fiber.Ctx) (string, error) {
 	if data == nil {
 		return "", fiber.ErrUnauthorized
 	}
-	valid, _ := data["valid"].(bool)
-	if !valid {
+	if ok, _ := data["valid"].(bool); !ok {
 		return "", fiber.ErrUnauthorized
+	}
+	if uuidStr, ok := data["uuid"].(string); ok && strings.TrimSpace(uuidStr) != "" {
+		return strings.TrimSpace(uuidStr), nil
 	}
 	if uidAny, ok := data["uid"]; ok {
 		switch v := uidAny.(type) {
 		case float64:
 			return fmt.Sprintf("%0.0f", v), nil
 		case string:
-			return v, nil
-		default:
-			return "", fiber.ErrUnauthorized
+			if s := strings.TrimSpace(v); s != "" {
+				return s, nil
+			}
 		}
 	}
-	if uidStr, ok := data["userId"].(string); ok && uidStr != "" {
-		return uidStr, nil
+	if uidStr, ok := data["userId"].(string); ok && strings.TrimSpace(uidStr) != "" {
+		return strings.TrimSpace(uidStr), nil
 	}
 	return "", fiber.ErrUnauthorized
+}
+
+func bearerToken(header string) string {
+	header = strings.TrimSpace(header)
+	if strings.HasPrefix(strings.ToLower(header), "bearer ") {
+		return strings.TrimSpace(header[7:])
+	}
+	return ""
 }
