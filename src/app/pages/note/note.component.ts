@@ -7,6 +7,7 @@ import { BlockEditorComponent } from '../../components/block-editor/block-editor
 import { EditorDocument, EditorDocumentMeta } from '../../editor/editor.types';
 import { deserializeDocument, serializeDocument, createBlock } from '../../editor/editor.utils';
 import { Note, NotesService } from '../../notes.service';
+import { ThemeService } from '../../theme.service';
 
 interface PageProperty {
   id: string;
@@ -50,7 +51,6 @@ export class NotePageComponent implements OnInit, OnDestroy {
 
   coverImage: string | null = null;
   pageIcon: string = '📝';
-  darkMode = false;
   propertyMenuOpen = false;
   coverMenuOpen = false;
   coverUploading = false;
@@ -99,10 +99,10 @@ export class NotePageComponent implements OnInit, OnDestroy {
     private route: ActivatedRoute,
     private router: Router,
     public notes: NotesService,
+    public theme: ThemeService,
   ) {}
 
   ngOnInit(): void {
-    this.darkMode = localStorage.getItem('notes-dark-mode') === '1';
     this.routeSub = this.route.paramMap.subscribe(async (pm) => {
       const id = pm.get('id') || 'new';
       await this.loadNote(id);
@@ -287,8 +287,7 @@ export class NotePageComponent implements OnInit, OnDestroy {
   }
 
   toggleDarkMode() {
-    this.darkMode = !this.darkMode;
-    localStorage.setItem('notes-dark-mode', this.darkMode ? '1' : '0');
+    this.theme.toggle();
   }
 
   async archive() {

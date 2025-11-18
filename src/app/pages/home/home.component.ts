@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { CoreAuthService } from '@berjis/angular-auth';
 import { NotesService, Note } from '../../notes.service';
+import { ThemeService } from '../../theme.service';
 
 @Component({
   standalone: true,
@@ -16,7 +17,7 @@ export class HomePageComponent {
   loading = false;
   error: string | null = null;
 
-  constructor(private auth: CoreAuthService, private router: Router, private notes: NotesService) {
+  constructor(private auth: CoreAuthService, private router: Router, private notes: NotesService, public theme: ThemeService) {
     void this.init();
   }
 
@@ -45,6 +46,22 @@ export class HomePageComponent {
 
   select(note: Note) {
     this.router.navigate(['/note', note.id]);
+  }
+
+  toggleTheme() {
+    this.theme.toggle();
+  }
+
+  get themeModeLabel() {
+    return this.theme.isDark ? 'Switch to light mode' : 'Switch to dark mode';
+  }
+
+  get themeIcon() {
+    return this.theme.isDark ? 'light_mode' : 'dark_mode';
+  }
+
+  get themeButtonText() {
+    return this.theme.isDark ? 'Light' : 'Dark';
   }
 }
 

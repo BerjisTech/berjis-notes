@@ -14,6 +14,7 @@ import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
 import { CoreAuthService } from '@berjis/angular-auth';
 import { Note, NoteSearchResult, NoteStatus, NotesService } from './notes.service';
+import { ThemeService } from './theme.service';
 
 type NoteBuckets = Record<NoteStatus, Note[]>;
 
@@ -46,7 +47,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
   @ViewChildren('searchBox') searchBoxes?: QueryList<ElementRef<HTMLInputElement>>;
 
-  constructor(private router: Router, private auth: CoreAuthService, public notes: NotesService) {}
+  constructor(private router: Router, private auth: CoreAuthService, public notes: NotesService, public theme: ThemeService) {}
 
   async ngOnInit(): Promise<void> {
     this.authUnsub = this.auth.onSessionChange((session) => {
@@ -273,5 +274,21 @@ export class AppComponent implements OnInit, OnDestroy {
   }
   get lastError() {
     return this.notes.lastError;
+  }
+
+  toggleTheme() {
+    this.theme.toggle();
+  }
+
+  get themeModeLabel() {
+    return this.theme.isDark ? 'Switch to light mode' : 'Switch to dark mode';
+  }
+
+  get themeButtonText() {
+    return this.theme.isDark ? 'Light' : 'Dark';
+  }
+
+  get themeIcon() {
+    return this.theme.isDark ? 'light_mode' : 'dark_mode';
   }
 }
